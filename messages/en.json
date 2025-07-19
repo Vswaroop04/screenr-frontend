@@ -2,6 +2,12 @@
   "HomePage": {
     "title": "Verify Dev",
     "description": "A new way to test Developer Skills",
-    "about": "Go to the about page"
+    "about": "Go to the about page",
+    "assesmentsLink": "View assessments"
+  },
+  "AssesmentsPage": {
+    "title": "Assesments",
+    "run": "Run",
+    "back": "Back"
   }
 }

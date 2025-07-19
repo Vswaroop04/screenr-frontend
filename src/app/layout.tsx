@@ -1,9 +1,8 @@
-import { NextIntlClientProvider } from 'next-intl'
+// app/layout.tsx (Server Component)
 import { getLocale } from 'next-intl/server'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Toaster } from 'sonner'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
-import { env } from '@/lib/env'
+import { NextIntlClientProvider } from 'next-intl'
+import { ClientProviders } from '@/components/client-providers/' // <-- wrap QueryClientProvider here
+import './globals.css'
 
 export default async function RootLayout ({
   children
@@ -11,16 +10,13 @@ export default async function RootLayout ({
   children: React.ReactNode
 }) {
   const locale = await getLocale()
-  const queryClient = new QueryClient()
 
   return (
     <html lang={locale}>
       <body>
-        <QueryClientProvider client={queryClient}>
-          <NextIntlClientProvider>{children}</NextIntlClientProvider>
-          <Toaster richColors position='bottom-right' />
-          <ReactQueryDevtools initialIsOpen={env.NEXT_PUBLIC_ENVIRONMENT === 'local'} />
-        </QueryClientProvider>
+        <NextIntlClientProvider>
+          <ClientProviders>{children}</ClientProviders>
+        </NextIntlClientProvider>
       </body>
     </html>
   )

@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# README
 
-## Getting Started
+# Verify Dev Frontend
 
-First, run the development server:
+## Development Workflow
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Do your development work in your own branch, and create a merge request to the `main` branch when your task is complete. Request a reviewer as part of the merge request.
+- Clone the repo: `git clone <repo-url>`
+- Navigate to the frontend directory: `cd frontend`
+- Create a `.env` file. Ask any developer to securely share it using [croc](https://github.com/schollz/croc) or another secure channel if it involves secret keys.
+- Install dependencies: `npm install`
+- Start the development server: `npm run dev`
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Working with the backend API
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Follow the instructions in `backend/README.md` to generate the Encore API client.
+- Copy the generated client file to `src/lib/api.ts`. Your new API methods will then be available from that client.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Coding Principles
 
-## Learn More
+- Prefer **Server Components** whenever possible.
+- Always use translations. Place copy in the `messages/*` folder and access it with `next-intl`; avoid hard-coded strings.
+- Use **TanStack Query** for all data fetching. When a component needs data, prefetch the query in a Server Component, dehydrate the state, and hydrate it on the client (see `src/app/assesments/page.tsx`).
+- Use **React Hook Form** with Zod for forms and validation.
+- Before creating a new UI element, check **shadcn/ui**. If a component exists there, reuse it; otherwise add your own component under `src/components/shared`.
+- Minimise custom CSS; use Tailwind utilities wherever possible.
+- Persist shared client-side state with **Zustand** if necessary.
+- Store common colour tokens in `globals.css` using custom properties such as `--brand-blue-1`.
+- Review more in [Best Coding Practices & Contribution Rules](https://www.notion.so/Best-Coding-Practices-Contribution-Rules-22bc4b54f81a8020ab15cfd32f5e4881?source=copy_link) before submitting any code.
 
-To learn more about Next.js, take a look at the following resources:
+### Git History
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Use `git pull --rebase` (or `git rebase main`) instead of merge commits to maintain a clean, linear commit history.
