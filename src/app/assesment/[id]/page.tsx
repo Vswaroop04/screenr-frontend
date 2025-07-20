@@ -1,60 +1,44 @@
 // app/assesment/[id]/page.tsx
 // Dynamic route for displaying a single assessment/test detail
 
-import { notFound } from 'next/navigation'
 import client from '@/lib/client'
 import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent
-} from '@/components/ui/card'
+  dehydrate,
+  HydrationBoundary,
+  QueryClient
+} from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { getTranslations } from 'next-intl/server'
+import AssesmentPlayground from '@/components/assesments/assesment-playground'
+
 
 interface PageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default async function AssesmentPage ({ params }: PageProps) {
-  const { id } = params
+  const { id } = await params
   const t = await getTranslations('AssesmentsPage')
 
-  try {
-    const test = await client.main.getTestById(id)
+  const queryClient = new QueryClient()
+  await queryClient.prefetchQuery({
+    queryKey: ['test', id],
+    queryFn: () => client.main.getTestById(id)
+  })
+  const dehydratedState = dehydrate(queryClient)
 
-    if (!test) {
-      return notFound()
-    }
+  return (
+    <div className='container mx-auto space-y-6 p-4'>
+      <Button asChild variant='outline' size='sm'>
+        <Link href='/assesments'>{t('back', { default: 'Back' })}</Link>
+      </Button>
 
-    return (
-      <div className='container mx-auto  space-y-6 p-4'>
-        <Button asChild variant='outline' size='sm'>
-          <Link href='/assesments'>{t('back', { default: 'Back' })}</Link>
-        </Button>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{test.title}</CardTitle>
-            {test.description && (
-              <CardDescription>{test.description}</CardDescription>
-            )}
-          </CardHeader>
-
-          <CardContent>
-            <CardDescription>
-              Need to implement monaco editor here ...... :
-            </CardDescription>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  } catch (err) {
-    console.error(err)
-    return notFound()
-  }
+      <HydrationBoundary state={dehydratedState}>
+        <AssesmentPlayground id={id} />
+      </HydrationBoundary>
+    </div>
+  )
 }

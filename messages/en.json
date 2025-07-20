@@ -8,6 +8,13 @@
   "AssesmentsPage": {
     "title": "Assesments",
     "run": "Run",
-    "back": "Back"
+    "back": "Back",
+    "Submit": "Submit",
+    "submitted": "Submitted",
+    "submissionSuccess": "Submission successful!",
+    "allTestsPassed": "All test cases passed. Great job!",
+    "testCasesFailed": "Test cases failed.",
+    "loading": "...",
+    "react_playground": "React Playground"
   }
 }
