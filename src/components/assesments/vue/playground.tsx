@@ -25,49 +25,77 @@ const Playground = ({ starterCode, testCode }: PlaygroundProps) => {
    * @returns `true` if all tests pass, `false` otherwise.
    */
   /** Generates full HTML to be used in iframe for preview */
+
+  function parseCode(userCode: string): string {
+    let trimmedCode = userCode.trim();
+    if (trimmedCode.endsWith(";")) {
+      trimmedCode = trimmedCode.slice(0, -1);
+    }
+    const finalCode = trimmedCode + `.mount('#app');`;
+    return finalCode;
+  }
+
   function generatePreviewHtml(userCode: string) {
-    const previewHtml = `
+    const finalCode = parseCode(userCode);
+    return `
   <!DOCTYPE html>
-  <html>
-    <body>
+  <html lang="en">
+  <body>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
       <div id="app"></div>
-      <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
       <script type="module">
-        const { createApp, ref } = Vue;
-        ${userCode}
+        const { createApp, ref, onMounted, computed, reactive, watch, watchEffect } = Vue;
+        ${finalCode}
       </script>
     </body>
   </html>`;
-    return previewHtml;
   }
 
   /** Generates HTML that runs both the user code and testCode, sends result via postMessage */
-  function generateTestHtml(userCode: string, testCode: string) {
-    const testHtml = `
-  <!DOCTYPE html>
-  <html>
-    <body>
-      <div id="app"></div>
-      <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-      <script type="module">
-        const { createApp, ref } = Vue;
-        ${userCode}
-
-        // Delay test to allow Vue DOM to render
-        setTimeout(() => {
+  function generateTestHtml(userCode: string, testCode: string): string {
+    const finalCode = parseCode(userCode)
+    return `
+      <!DOCTYPE html>
+      <html>
+        <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+      <body>
+        <div id="app"></div>
+        <script type="module">
+          const { createApp, ref, reactive, computed, watch, watchEffect, onMounted, nextTick } = Vue;
+          
+          // Global test context to store app instance and expose data
+          window.testContext = {};
+          
           try {
-            const passed = (function test() {
-              ${testCode}
-            })();
-            window.parent.postMessage({ pass: !!passed }, '*');
+            // Execute user code and capture the app
+            const app = ${finalCode};
+          
+            // Store app instance for testing
+            window.testContext.app = app;
+            
+            // Wait for Vue to finish mounting and then run tests
+            nextTick().then(() => {
+              try {
+                // Execute test code
+                ${testCode}
+                
+                // Run the actual test function
+                const passed = testFunction();
+                window.parent.postMessage({ pass: !!passed }, '*');
+              } catch (err) {
+                console.error('Test execution error:', err);
+                window.parent.postMessage({ pass: false, error: err.message }, '*');
+              }
+            });
+            
           } catch (err) {
+            console.error('Setup error:', err);
             window.parent.postMessage({ pass: false, error: err.message }, '*');
           }
-        }, 300);
-      </script>
-    </body>
-  </html>`;
-    return testHtml;
+        </script>
+      </body>
+      </html>
+    `;
   }
 
   /** Live preview renderer */
@@ -85,6 +113,8 @@ const Playground = ({ starterCode, testCode }: PlaygroundProps) => {
 
     container.appendChild(iframe);
   }, [code]);
+
+
   async function runTests(
     userCode: string,
     testCode: string
