@@ -1,7 +1,6 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
-// import { LiveProvider, LivePreview, LiveError } from "react-live";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
@@ -53,7 +52,7 @@ const Playground = ({ starterCode, testCode }: PlaygroundProps) => {
 
   /** Generates HTML that runs both the user code and testCode, sends result via postMessage */
   function generateTestHtml(userCode: string, testCode: string): string {
-    const finalCode = parseCode(userCode)
+    const finalCode = parseCode(userCode);
     return `
       <!DOCTYPE html>
       <html>
@@ -65,20 +64,20 @@ const Playground = ({ starterCode, testCode }: PlaygroundProps) => {
           
           // Global test context to store app instance and expose data
           window.testContext = {};
-          
+
           try {
             // Execute user code and capture the app
             const app = ${finalCode};
-          
+
             // Store app instance for testing
             window.testContext.app = app;
-            
+
             // Wait for Vue to finish mounting and then run tests
             nextTick().then(() => {
               try {
                 // Execute test code
                 ${testCode}
-                
+
                 // Run the actual test function
                 const passed = testFunction();
                 window.parent.postMessage({ pass: !!passed }, '*');
@@ -87,7 +86,7 @@ const Playground = ({ starterCode, testCode }: PlaygroundProps) => {
                 window.parent.postMessage({ pass: false, error: err.message }, '*');
               }
             });
-            
+
           } catch (err) {
             console.error('Setup error:', err);
             window.parent.postMessage({ pass: false, error: err.message }, '*');
@@ -98,22 +97,21 @@ const Playground = ({ starterCode, testCode }: PlaygroundProps) => {
     `;
   }
 
-  /** Live preview renderer */
-  useEffect(() => {
+  const renderCode = (previewCode: string) => {
     const container = iframeRef.current;
     if (!container) return;
-    container.innerHTML = ""; // Clear previous
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
     const iframe = document.createElement("iframe");
     iframe.title = "Vue Renderer";
     iframe.sandbox.add("allow-scripts");
-    iframe.srcdoc = generatePreviewHtml(code);
+    iframe.srcdoc = generatePreviewHtml(previewCode);
     iframe.style.width = "100%";
     iframe.style.height = "100%";
     iframe.style.border = "none";
-
     container.appendChild(iframe);
-  }, [code]);
-
+  };
 
   async function runTests(
     userCode: string,
@@ -142,8 +140,11 @@ const Playground = ({ starterCode, testCode }: PlaygroundProps) => {
     }
   }
 
-  function handleOnChange(value?: string) {
-    setCode(value || "");
+  function handleOnChange(value: string | undefined) {
+    if (value !== undefined) {
+      renderCode(value);
+      setCode(value);
+    }
   }
 
   return (
@@ -171,14 +172,8 @@ const Playground = ({ starterCode, testCode }: PlaygroundProps) => {
             }}
           />
         </div>
-
-        {/* Live Preview / Success message */}
         {status !== "passed" ? (
           <div className="w-1/2 bg-gray-50 p-6 overflow-auto">
-            {/* <LiveProvider code={code}>
-              <LivePreview />
-              <LiveError />
-            </LiveProvider> */}
             <div ref={iframeRef} />
           </div>
         ) : (
