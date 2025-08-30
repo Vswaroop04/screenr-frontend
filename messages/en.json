@@ -15,6 +15,7 @@
     "allTestsPassed": "All test cases passed. Great job!",
     "testCasesFailed": "Test cases failed.",
     "loading": "...",
-    "react_playground": "React Playground"
+    "react_playground": "React Playground",
+    "vue_playground": "Vue Playground"
   }
 }
