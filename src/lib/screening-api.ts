@@ -105,6 +105,9 @@ export interface Candidate {
   explanation?: ScoreExplanation;
   customAnswers?: CustomAnswer[];
   skillMatch?: SkillMatchDetail;
+  parsedLocation?: { city?: string; state?: string; country?: string };
+  predictedRoles?: string[];
+  totalYearsExperience?: number;
   status: string;
   processedAt?: string;
 }
@@ -130,6 +133,9 @@ export interface QuickAnalyzeResponse {
   summary: string;
   skillsMatched?: string[];
   skillsMissing?: string[];
+  predictedRoles?: Array<{ role: string; confidence: number; reasoning: string }>;
+  courseRecommendations?: Array<{ title: string; platform: string; skill: string; url?: string }>;
+  resumeTips?: Array<{ category: string; tip: string; priority: string }>;
 }
 
 export interface ResumeStatus {
@@ -169,6 +175,9 @@ export interface AnalysisResult {
     skillMatch?: SkillMatchDetail;
     explanation?: ScoreExplanation;
     customAnswers?: CustomAnswer[];
+    predictedRoles?: Array<{ role: string; confidence: number; reasoning: string }>;
+    courseRecommendations?: Array<{ title: string; platform: string; skill: string; url?: string }>;
+    resumeTips?: Array<{ category: string; tip: string; priority: string }>;
   };
   verifications?: {
     github?: {
@@ -273,6 +282,14 @@ export const recruiterAPI = {
   // Get ranked candidates for a job
   getJobCandidates: (jobId: string): Promise<JobCandidatesResponse> =>
     fetchAPI(`/jobs/${jobId}/candidates`),
+
+  // Get presigned download URL for a resume PDF
+  getResumeDownloadUrl: (resumeId: string): Promise<{ downloadUrl: string }> =>
+    fetchAPI(`/resumes/${resumeId}/download-url`),
+
+  // Reprocess a failed resume
+  reprocessResume: (resumeId: string): Promise<{ success: boolean; message: string }> =>
+    fetchAPI(`/resumes/${resumeId}/reprocess`, { method: "POST" }),
 };
 
 // ============================================================================
@@ -325,6 +342,104 @@ export const candidateAPI = {
   // Get analysis result
   getAnalysisResult: (analysisId: string): Promise<AnalysisResult> =>
     fetchAPI(`/analyses/${analysisId}`),
+};
+
+// ============================================================================
+// Settings API
+// ============================================================================
+
+export const settingsAPI = {
+  getCompany: (token: string): Promise<{
+    success: boolean;
+    company?: {
+      id: string;
+      name: string;
+      website: string | null;
+      industry: string | null;
+      companySize: string | null;
+      description: string | null;
+      logo: string | null;
+      linkedinUrl: string | null;
+    };
+    message?: string;
+  }> =>
+    fetchAPI("/auth/company/get", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+
+  updateCompany: (
+    token: string,
+    data: {
+      name?: string;
+      website?: string;
+      industry?: string;
+      companySize?: string;
+    }
+  ): Promise<{ success: boolean; message: string }> =>
+    fetchAPI("/auth/company/update", {
+      method: "POST",
+      body: JSON.stringify({ token, ...data }),
+    }),
+
+  deleteAccount: (token: string): Promise<{ success: boolean; message: string }> =>
+    fetchAPI("/auth/account/delete", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+};
+
+// ============================================================================
+// Team API
+// ============================================================================
+
+export const teamAPI = {
+  inviteTeamMember: (
+    email: string,
+    role: "admin" | "member",
+    inviterId: string
+  ): Promise<{ invitationId: string; token: string; expiresAt: string }> =>
+    fetchAPI("/team/invite", {
+      method: "POST",
+      body: JSON.stringify({ email, role, inviterId }),
+    }),
+
+  getTeamMembers: (
+    recruiterId: string
+  ): Promise<{
+    members: Array<{
+      id: string;
+      email: string;
+      fullName?: string;
+      role: "admin" | "member";
+      status: "active" | "pending";
+      joinedAt?: string;
+      invitationId?: string;
+    }>;
+  }> => fetchAPI(`/team/${recruiterId}/members`),
+
+  removeTeamMember: (
+    memberId: string,
+    recruiterId: string
+  ): Promise<{ success: boolean }> =>
+    fetchAPI(`/team/members/${memberId}`, {
+      method: "DELETE",
+      body: JSON.stringify({ memberId, recruiterId }),
+    }),
+
+  resendInvitation: (invitationId: string): Promise<{ success: boolean }> =>
+    fetchAPI(`/team/invitations/${invitationId}/resend`, {
+      method: "POST",
+    }),
+
+  acceptInvitation: (
+    token: string,
+    userId: string
+  ): Promise<{ success: boolean; recruiterId: string }> =>
+    fetchAPI("/team/accept", {
+      method: "POST",
+      body: JSON.stringify({ token, userId }),
+    }),
 };
 
 // ============================================================================

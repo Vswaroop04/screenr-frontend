@@ -1,11 +1,13 @@
 "use client";
 
-import { User, Mail, FileText, CheckCircle, AlertCircle, Clock, XCircle, Shield, ChevronDown, ChevronUp } from "lucide-react";
+import { User, Mail, FileText, CheckCircle, AlertCircle, Clock, XCircle, Shield, ChevronDown, ChevronUp, Eye } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScoreCircle, ScoreDisplay, TrustBadge } from "./score-display";
+import { useResumeDownloadUrl } from "@/lib/screening-hooks";
 import type { Candidate } from "@/lib/screening-api";
 
 interface CandidateCardProps {
@@ -16,6 +18,7 @@ interface CandidateCardProps {
 
 export function CandidateCard({ candidate, rank, onClick }: CandidateCardProps) {
   const [showExplanation, setShowExplanation] = useState(false);
+  const downloadUrl = useResumeDownloadUrl();
 
   const getRecommendationBadge = (rec?: string) => {
     switch (rec) {
@@ -100,10 +103,23 @@ export function CandidateCard({ candidate, rank, onClick }: CandidateCardProps) 
       </CardHeader>
 
       <CardContent className="space-y-3">
-        {/* File name */}
+        {/* File name + View PDF */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <FileText className="h-4 w-4" />
-          <span className="truncate">{candidate.fileName}</span>
+          <FileText className="h-4 w-4 flex-shrink-0" />
+          <span className="truncate flex-1">{candidate.fileName}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              downloadUrl.mutate(candidate.resumeId);
+            }}
+            disabled={downloadUrl.isPending}
+          >
+            <Eye className="h-3 w-3 mr-1" />
+            PDF
+          </Button>
         </div>
 
         {isProcessed ? (
@@ -231,11 +247,33 @@ export function CandidateCard({ candidate, rank, onClick }: CandidateCardProps) 
             )}
           </>
         ) : (
-          <div className="flex items-center justify-center py-4 text-sm text-muted-foreground">
+          <div className="flex flex-col items-center justify-center py-4 gap-2">
             {candidate.status === "failed" ? (
-              <span className="text-red-500">Processing failed</span>
+              <span className="text-sm text-red-500">Processing failed</span>
             ) : (
-              <span>Processing...</span>
+              <>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="h-4 w-4 animate-pulse text-yellow-500" />
+                  <span>
+                    {candidate.status === "uploaded" && "Queued for processing..."}
+                    {candidate.status === "parsing" && "Parsing resume..."}
+                    {candidate.status === "parsed" && "Resume parsed, ready for analysis"}
+                    {candidate.status === "analyzing" && "AI analyzing skills & fit..."}
+                  </span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+                    style={{
+                      width:
+                        candidate.status === "uploaded" ? "10%" :
+                        candidate.status === "parsing" ? "35%" :
+                        candidate.status === "parsed" ? "55%" :
+                        candidate.status === "analyzing" ? "80%" : "0%",
+                    }}
+                  />
+                </div>
+              </>
             )}
           </div>
         )}

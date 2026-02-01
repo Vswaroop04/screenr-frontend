@@ -12,8 +12,24 @@ export default async function RootLayout ({
   const locale = await getLocale()
 
   return (
-    <html lang={locale}>
-      <body>
+    <html lang={locale} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var theme = localStorage.getItem('theme');
+                  if (theme === 'light') {
+                    document.documentElement.classList.add('light');
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
+      <body suppressHydrationWarning>
         <NextIntlClientProvider>
           <ClientProviders>{children}</ClientProviders>
         </NextIntlClientProvider>

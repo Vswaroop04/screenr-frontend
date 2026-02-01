@@ -48,7 +48,8 @@ export function useJobCandidates(jobId: string) {
     queryKey: screeningKeys.jobCandidates(jobId),
     queryFn: () => recruiterAPI.getJobCandidates(jobId),
     enabled: !!jobId,
-    refetchInterval: 5000, // Poll every 5 seconds for updates
+    // SSE provides instant updates; polling is a fallback if SSE drops
+    refetchInterval: 10000,
   });
 }
 
@@ -128,6 +129,29 @@ export function useUpdateJobPreferences(jobId: string) {
   });
 }
 
+export function useResumeDownloadUrl() {
+  return useMutation({
+    mutationFn: async (resumeId: string) => {
+      const { downloadUrl } = await recruiterAPI.getResumeDownloadUrl(resumeId);
+      window.open(downloadUrl, "_blank");
+      return downloadUrl;
+    },
+  });
+}
+
+export function useReprocessResume(jobId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (resumeId: string) => recruiterAPI.reprocessResume(resumeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: screeningKeys.jobCandidates(jobId),
+      });
+    },
+  });
+}
+
 export function useRecomputeRanking(jobId: string) {
   const queryClient = useQueryClient();
 
@@ -156,14 +180,7 @@ export function useResumeStatus(resumeId: string | null) {
     queryKey: screeningKeys.resumeStatus(resumeId || ""),
     queryFn: () => candidateAPI.getResumeStatus(resumeId!),
     enabled: !!resumeId,
-    refetchInterval: (query) => {
-      // Keep polling until parsed or failed
-      const status = query.state.data?.status;
-      if (status === "parsed" || status === "analyzed" || status === "failed") {
-        return false;
-      }
-      return 2000; // Poll every 2 seconds
-    },
+    // No polling - real-time updates come via SSE (useResumeSSE hook)
   });
 }
 
@@ -172,14 +189,7 @@ export function useAnalysisResult(analysisId: string | null) {
     queryKey: screeningKeys.analysis(analysisId || ""),
     queryFn: () => candidateAPI.getAnalysisResult(analysisId!),
     enabled: !!analysisId,
-    refetchInterval: (query) => {
-      // Keep polling until completed or failed
-      const status = query.state.data?.status;
-      if (status === "completed" || status === "failed") {
-        return false;
-      }
-      return 3000; // Poll every 3 seconds
-    },
+    // No polling - real-time updates come via SSE (useResumeSSE hook)
   });
 }
 

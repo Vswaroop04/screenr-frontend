@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Upload, FileText, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,18 @@ export function FileUpload({
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const wasUploading = useRef(false);
+
+  // Clear selected files when upload finishes (isUploading transitions true → false)
+  useEffect(() => {
+    if (isUploading) {
+      wasUploading.current = true;
+    } else if (wasUploading.current) {
+      wasUploading.current = false;
+      setSelectedFiles([]);
+      setError(null);
+    }
+  }, [isUploading]);
 
   const validateFiles = useCallback(
     (files: File[]): File[] => {
