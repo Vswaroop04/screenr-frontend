@@ -11,21 +11,30 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
-import { Users, FileSearch, ArrowRight, Sparkles } from 'lucide-react'
+import { Users, FileSearch, ArrowRight, Sparkles, Loader2 } from 'lucide-react'
 import { useAuthStore } from '@/lib/auth-store'
 import { UserNav } from '@/components/layout/user-nav'
 
 export default function HomePage () {
   const router = useRouter()
-  const { user, isAuthenticated } = useAuthStore()
+  const { user, isAuthenticated, hasHydrated } = useAuthStore()
 
   useEffect(() => {
+    if (!hasHydrated) return
     if (isAuthenticated && user) {
       const dashboardPath =
         user.role === 'recruiter' ? '/recruiter/home' : '/candidate/home'
       router.push(dashboardPath)
     }
-  }, [isAuthenticated, user, router])
+  }, [isAuthenticated, user, router, hasHydrated])
+
+  if (!hasHydrated) {
+    return (
+      <main className='flex min-h-screen items-center justify-center'>
+        <Loader2 className='h-8 w-8 animate-spin text-primary' />
+      </main>
+    )
+  }
 
   return (
     <main className='flex min-h-screen flex-col items-center justify-center gap-8 px-4 py-12'>
@@ -59,7 +68,7 @@ export default function HomePage () {
             <div className='mb-2 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10'>
               <Users className='h-6 w-6 text-primary' />
             </div>
-            <CardTitle className='text-xl'>For Recruiters</CardTitle>
+            <CardTitle className='text-xl'>For Organizations</CardTitle>
             <CardDescription>
               Upload multiple resumes, get AI-ranked candidates with detailed
               match scores and insights.

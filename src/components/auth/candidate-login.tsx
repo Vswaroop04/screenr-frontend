@@ -149,7 +149,7 @@ export function CandidateLogin () {
                 e.stopPropagation()
                 handleSignup()
               }}
-              disabled={loading || !email}
+              disabled={loading}
             >
               Sign up
             </Button>

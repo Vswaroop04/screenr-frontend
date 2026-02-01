@@ -110,6 +110,10 @@ export interface Candidate {
   totalYearsExperience?: number;
   status: string;
   processedAt?: string;
+  // Shortlisting
+  isShortlisted?: boolean;
+  groupName?: string;
+  shortlistNotes?: string;
 }
 
 export interface JobCandidatesResponse {
@@ -290,6 +294,53 @@ export const recruiterAPI = {
   // Reprocess a failed resume
   reprocessResume: (resumeId: string): Promise<{ success: boolean; message: string }> =>
     fetchAPI(`/resumes/${resumeId}/reprocess`, { method: "POST" }),
+
+  // Toggle shortlist for a candidate
+  toggleShortlist: (
+    jobId: string,
+    resumeId: string,
+    isShortlisted: boolean
+  ): Promise<{ success: boolean; isShortlisted: boolean }> =>
+    fetchAPI(`/jobs/${jobId}/candidates/${resumeId}/shortlist`, {
+      method: "POST",
+      body: JSON.stringify({ jobId, resumeId, isShortlisted }),
+    }),
+
+  // Bulk shortlist candidates
+  bulkShortlist: (
+    jobId: string,
+    resumeIds: string[],
+    isShortlisted: boolean
+  ): Promise<{ success: boolean; updated: number }> =>
+    fetchAPI(`/jobs/${jobId}/candidates/bulk-shortlist`, {
+      method: "POST",
+      body: JSON.stringify({ jobId, resumeIds, isShortlisted }),
+    }),
+
+  // Assign candidates to a group
+  assignGroup: (
+    jobId: string,
+    resumeIds: string[],
+    groupName: string
+  ): Promise<{ success: boolean; updated: number }> =>
+    fetchAPI(`/jobs/${jobId}/candidates/assign-group`, {
+      method: "POST",
+      body: JSON.stringify({ jobId, resumeIds, groupName }),
+    }),
+
+  // Remove candidates from a group
+  removeFromGroup: (
+    jobId: string,
+    resumeIds: string[]
+  ): Promise<{ success: boolean; updated: number }> =>
+    fetchAPI(`/jobs/${jobId}/candidates/remove-group`, {
+      method: "POST",
+      body: JSON.stringify({ jobId, resumeIds }),
+    }),
+
+  // Get all groups for a job
+  getJobGroups: (jobId: string): Promise<{ groups: Array<{ name: string; count: number }> }> =>
+    fetchAPI(`/jobs/${jobId}/groups`),
 };
 
 // ============================================================================
@@ -416,6 +467,7 @@ export const teamAPI = {
       joinedAt?: string;
       invitationId?: string;
     }>;
+    isAdmin: boolean;
   }> => fetchAPI(`/team/${recruiterId}/members`),
 
   removeTeamMember: (

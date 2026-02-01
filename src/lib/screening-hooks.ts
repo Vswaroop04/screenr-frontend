@@ -165,6 +165,62 @@ export function useRecomputeRanking(jobId: string) {
   });
 }
 
+export function useToggleShortlist(jobId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ resumeId, isShortlisted }: { resumeId: string; isShortlisted: boolean }) =>
+      recruiterAPI.toggleShortlist(jobId, resumeId, isShortlisted),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: screeningKeys.jobCandidates(jobId),
+      });
+    },
+  });
+}
+
+export function useBulkShortlist(jobId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ resumeIds, isShortlisted }: { resumeIds: string[]; isShortlisted: boolean }) =>
+      recruiterAPI.bulkShortlist(jobId, resumeIds, isShortlisted),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: screeningKeys.jobCandidates(jobId),
+      });
+    },
+  });
+}
+
+export function useAssignGroup(jobId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ resumeIds, groupName }: { resumeIds: string[]; groupName: string }) =>
+      recruiterAPI.assignGroup(jobId, resumeIds, groupName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: screeningKeys.jobCandidates(jobId),
+      });
+    },
+  });
+}
+
+export function useRemoveFromGroup(jobId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (resumeIds: string[]) =>
+      recruiterAPI.removeFromGroup(jobId, resumeIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: screeningKeys.jobCandidates(jobId),
+      });
+    },
+  });
+}
+
 // ============================================================================
 // Candidate Hooks
 // ============================================================================

@@ -107,10 +107,10 @@ export function RecruiterSignup() {
   return (
     <div className="w-full max-w-2xl space-y-6">
       <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-bold">Recruiter Sign Up</h1>
+        <h1 className="text-3xl font-bold">Organization Sign Up</h1>
         <p className="text-muted-foreground">
           {step === "details"
-            ? "Create your recruiter account to start hiring verified talent"
+            ? "Create your organization account to start hiring verified talent"
             : "Enter the verification code sent to your email"}
         </p>
       </div>
@@ -266,7 +266,7 @@ export function RecruiterSignup() {
                 Creating Account...
               </>
             ) : (
-              "Create Recruiter Account"
+              "Create Organization Account"
             )}
           </Button>
 

@@ -73,7 +73,7 @@ export function RecruiterLogin() {
   return (
     <div className="w-full max-w-md space-y-6">
       <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-bold">Recruiter Login</h1>
+        <h1 className="text-3xl font-bold">Organization Login</h1>
         <p className="text-muted-foreground">
           {step === "email"
             ? "Enter your email to receive a verification code"

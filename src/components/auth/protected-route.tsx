@@ -17,9 +17,11 @@ export function ProtectedRoute ({
   redirectTo
 }: ProtectedRouteProps) {
   const router = useRouter()
-  const { isAuthenticated, user } = useAuthStore()
+  const { isAuthenticated, user, hasHydrated } = useAuthStore()
 
   useEffect(() => {
+    if (!hasHydrated) return
+
     if (!isAuthenticated) {
       const defaultRedirect =
         requiredRole === 'recruiter'
@@ -32,9 +34,9 @@ export function ProtectedRoute ({
     if (requiredRole && user?.role !== requiredRole) {
       router.push('/')
     }
-  }, [isAuthenticated, user, requiredRole, redirectTo, router])
+  }, [isAuthenticated, user, requiredRole, redirectTo, router, hasHydrated])
 
-  if (!isAuthenticated) {
+  if (!hasHydrated || !isAuthenticated) {
     return (
       <div className='min-h-screen flex items-center justify-center'>
         <Loader2 className='h-8 w-8 animate-spin text-primary' />

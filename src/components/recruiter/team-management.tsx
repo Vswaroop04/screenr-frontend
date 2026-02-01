@@ -41,6 +41,7 @@ interface TeamMember {
 export function TeamManagement() {
   const { user } = useAuthStore();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -57,6 +58,7 @@ export function TeamManagement() {
         joinedAt: m.joinedAt || undefined,
         invitationId: m.invitationId || undefined,
       })));
+      setIsAdmin(result.isAdmin);
     } catch {
       console.error("Failed to fetch team members");
     } finally {
@@ -148,7 +150,7 @@ export function TeamManagement() {
             Invite team members to collaborate on recruitment
           </p>
         </div>
-        <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+        {isAdmin && <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <UserPlus className="h-4 w-4 mr-2" />
@@ -216,7 +218,7 @@ export function TeamManagement() {
               </div>
             </div>
           </DialogContent>
-        </Dialog>
+        </Dialog>}
       </div>
 
       <Card>
@@ -262,7 +264,7 @@ export function TeamManagement() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {member.status === "pending" && member.invitationId && (
+                    {isAdmin && member.status === "pending" && member.invitationId && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -272,13 +274,15 @@ export function TeamManagement() {
                         Resend
                       </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveMember(member.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    {isAdmin && member.id !== user?.id && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveMember(member.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}

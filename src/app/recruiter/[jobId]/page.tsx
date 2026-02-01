@@ -17,7 +17,12 @@ import {
   ArrowUpDown,
   LayoutGrid,
   List,
-  RotateCcw
+  RotateCcw,
+  Star,
+  FolderPlus,
+  CheckSquare,
+  Square,
+  X
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -48,7 +53,10 @@ import {
   useAnalyzeJobResumes,
   useUpdateJobPreferences,
   useRecomputeRanking,
-  useReprocessResume
+  useReprocessResume,
+  useToggleShortlist,
+  useBulkShortlist,
+  useAssignGroup
 } from '@/lib/screening-hooks'
 import { exportCandidatesToCSV } from '@/lib/csv-export'
 import { useJobSSE } from '@/lib/use-sse'
@@ -86,11 +94,19 @@ function JobDetailContent ({ params }: PageProps) {
   const updatePreferences = useUpdateJobPreferences(jobId)
   const recomputeRanking = useRecomputeRanking(jobId)
   const reprocessResume = useReprocessResume(jobId)
+  const toggleShortlist = useToggleShortlist(jobId)
+  const bulkShortlist = useBulkShortlist(jobId)
+  const assignGroup = useAssignGroup(jobId)
 
   const [viewMode, setViewMode] = useState<'card' | 'table'>('card')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortField, setSortField] = useState<SortField>('score')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+  const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set())
+  const [showGroupDialog, setShowGroupDialog] = useState(false)
+  const [groupName, setGroupName] = useState('')
+  const [filterShortlisted, setFilterShortlisted] = useState(false)
+  const [filterGroup, setFilterGroup] = useState<string | null>(null)
 
   const [weights, setWeights] = useState<ScoringWeights>({
     skills: 0.4,
@@ -143,6 +159,64 @@ function JobDetailContent ({ params }: PageProps) {
     }
   }
 
+  const handleToggleSelect = (resumeId: string) => {
+    setSelectedCandidates(prev => {
+      const next = new Set(prev)
+      if (next.has(resumeId)) {
+        next.delete(resumeId)
+      } else {
+        next.add(resumeId)
+      }
+      return next
+    })
+  }
+
+  const handleSelectAll = () => {
+    if (selectedCandidates.size === sortedCandidates?.length) {
+      setSelectedCandidates(new Set())
+    } else {
+      setSelectedCandidates(new Set(sortedCandidates?.map(c => c.resumeId) || []))
+    }
+  }
+
+  const handleToggleShortlist = async (resumeId: string, current: boolean) => {
+    try {
+      await toggleShortlist.mutateAsync({ resumeId, isShortlisted: !current })
+    } catch {
+      toast.error('Failed to update shortlist')
+    }
+  }
+
+  const handleBulkShortlist = async () => {
+    if (selectedCandidates.size === 0) return
+    try {
+      await bulkShortlist.mutateAsync({
+        resumeIds: Array.from(selectedCandidates),
+        isShortlisted: true
+      })
+      setSelectedCandidates(new Set())
+      toast.success(`Shortlisted ${selectedCandidates.size} candidate(s)`)
+    } catch {
+      toast.error('Failed to shortlist candidates')
+    }
+  }
+
+  const handleAssignGroup = async () => {
+    if (selectedCandidates.size === 0 || !groupName.trim()) return
+    try {
+      await assignGroup.mutateAsync({
+        resumeIds: Array.from(selectedCandidates),
+        groupName: groupName.trim()
+      })
+      setSelectedCandidates(new Set())
+      setGroupName('')
+      setShowGroupDialog(false)
+      toast.success(`Assigned ${selectedCandidates.size} candidate(s) to "${groupName.trim()}"`)
+    } catch {
+      toast.error('Failed to assign group')
+    }
+  }
+
   if (jobLoading) {
     return (
       <div className='flex min-h-screen items-center justify-center'>
@@ -164,8 +238,16 @@ function JobDetailContent ({ params }: PageProps) {
     c => c.overallScore !== undefined
   ).length
 
-  // Filter candidates by search
+  // Collect unique group names
+  const allGroups = Array.from(
+    new Set(candidates.filter(c => c.groupName).map(c => c.groupName!))
+  )
+  const shortlistedCount = candidates.filter(c => c.isShortlisted).length
+
+  // Filter candidates by search, shortlist, and group
   const filteredCandidates = candidates.filter(c => {
+    if (filterShortlisted && !c.isShortlisted) return false
+    if (filterGroup && c.groupName !== filterGroup) return false
     if (!searchQuery) return true
     const q = searchQuery.toLowerCase()
     return (
@@ -399,7 +481,7 @@ function JobDetailContent ({ params }: PageProps) {
         </TabsList>
 
         <TabsContent value='candidates' className='space-y-4'>
-          {/* Search and View Toggle */}
+          {/* Search, Filters, and View Toggle */}
           <div className='flex items-center justify-between gap-4'>
             <div className='relative flex-1 max-w-md'>
               <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
@@ -411,6 +493,26 @@ function JobDetailContent ({ params }: PageProps) {
               />
             </div>
             <div className='flex items-center gap-2'>
+              <Button
+                variant={filterShortlisted ? 'default' : 'outline'}
+                size='sm'
+                onClick={() => setFilterShortlisted(!filterShortlisted)}
+              >
+                <Star className={`h-4 w-4 mr-1 ${filterShortlisted ? 'fill-current' : ''}`} />
+                Shortlisted ({shortlistedCount})
+              </Button>
+              {allGroups.length > 0 && (
+                <select
+                  value={filterGroup || ''}
+                  onChange={e => setFilterGroup(e.target.value || null)}
+                  className='border rounded px-2 py-1.5 text-sm bg-background'
+                >
+                  <option value=''>All Groups</option>
+                  {allGroups.map(g => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              )}
               <Button
                 variant={viewMode === 'card' ? 'default' : 'outline'}
                 size='sm'
@@ -427,6 +529,55 @@ function JobDetailContent ({ params }: PageProps) {
               </Button>
             </div>
           </div>
+
+          {/* Bulk Actions Bar */}
+          {selectedCandidates.size > 0 && (
+            <div className='flex items-center gap-3 p-3 bg-muted rounded-lg'>
+              <span className='text-sm font-medium'>
+                {selectedCandidates.size} selected
+              </span>
+              <Button size='sm' variant='outline' onClick={handleBulkShortlist} disabled={bulkShortlist.isPending}>
+                <Star className='h-3.5 w-3.5 mr-1' />
+                Shortlist
+              </Button>
+              <Button size='sm' variant='outline' onClick={() => setShowGroupDialog(true)}>
+                <FolderPlus className='h-3.5 w-3.5 mr-1' />
+                Assign Group
+              </Button>
+              <Button size='sm' variant='ghost' onClick={() => setSelectedCandidates(new Set())}>
+                <X className='h-3.5 w-3.5 mr-1' />
+                Clear
+              </Button>
+            </div>
+          )}
+
+          {/* Group Assignment Dialog */}
+          {showGroupDialog && (
+            <div className='flex items-center gap-3 p-3 border rounded-lg bg-background'>
+              <Input
+                placeholder='Group name (e.g., Round 2, Technical Interview)'
+                value={groupName}
+                onChange={e => setGroupName(e.target.value)}
+                className='max-w-sm'
+                onKeyDown={e => { if (e.key === 'Enter') handleAssignGroup() }}
+              />
+              {allGroups.length > 0 && (
+                <div className='flex gap-1'>
+                  {allGroups.map(g => (
+                    <Button key={g} variant='outline' size='sm' onClick={() => setGroupName(g)}>
+                      {g}
+                    </Button>
+                  ))}
+                </div>
+              )}
+              <Button size='sm' onClick={handleAssignGroup} disabled={!groupName.trim() || assignGroup.isPending}>
+                Assign
+              </Button>
+              <Button size='sm' variant='ghost' onClick={() => { setShowGroupDialog(false); setGroupName('') }}>
+                Cancel
+              </Button>
+            </div>
+          )}
 
           {candidatesLoading ? (
             <div className='flex justify-center py-8'>
@@ -449,6 +600,15 @@ function JobDetailContent ({ params }: PageProps) {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className='w-10'>
+                        <button onClick={handleSelectAll} className='p-1'>
+                          {selectedCandidates.size === sortedCandidates.length && sortedCandidates.length > 0
+                            ? <CheckSquare className='h-4 w-4' />
+                            : <Square className='h-4 w-4 text-muted-foreground' />
+                          }
+                        </button>
+                      </TableHead>
+                      <TableHead className='w-10'></TableHead>
                       <TableHead>
                         <Button
                           variant='ghost'
@@ -484,6 +644,7 @@ function JobDetailContent ({ params }: PageProps) {
                         </Button>
                       </TableHead>
                       <TableHead>Recommendation</TableHead>
+                      <TableHead>Group</TableHead>
                       <TableHead>
                         <Button
                           variant='ghost'
@@ -501,13 +662,29 @@ function JobDetailContent ({ params }: PageProps) {
                   <TableBody>
                     {sortedCandidates.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className='text-center py-8 text-muted-foreground'>
+                        <TableCell colSpan={10} className='text-center py-8 text-muted-foreground'>
                           No candidates match your search
                         </TableCell>
                       </TableRow>
                     ) : (
                       sortedCandidates.map(candidate => (
-                        <TableRow key={candidate.resumeId}>
+                        <TableRow key={candidate.resumeId} className={selectedCandidates.has(candidate.resumeId) ? 'bg-muted/50' : ''}>
+                          <TableCell>
+                            <button onClick={() => handleToggleSelect(candidate.resumeId)} className='p-1'>
+                              {selectedCandidates.has(candidate.resumeId)
+                                ? <CheckSquare className='h-4 w-4' />
+                                : <Square className='h-4 w-4 text-muted-foreground' />
+                              }
+                            </button>
+                          </TableCell>
+                          <TableCell>
+                            <button
+                              onClick={() => handleToggleShortlist(candidate.resumeId, !!candidate.isShortlisted)}
+                              className='p-1 hover:scale-110 transition-transform'
+                            >
+                              <Star className={`h-4 w-4 ${candidate.isShortlisted ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
+                            </button>
+                          </TableCell>
                           <TableCell>
                             <div className='font-medium'>
                               {candidate.candidateName || 'Unknown'}
@@ -546,6 +723,13 @@ function JobDetailContent ({ params }: PageProps) {
                               >
                                 {candidate.recommendation.replace('_', ' ')}
                               </Badge>
+                            ) : (
+                              <span className='text-muted-foreground'>—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {candidate.groupName ? (
+                              <Badge variant='outline'>{candidate.groupName}</Badge>
                             ) : (
                               <span className='text-muted-foreground'>—</span>
                             )}
