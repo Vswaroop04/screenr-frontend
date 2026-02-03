@@ -154,6 +154,54 @@ export interface ResumeStatus {
   };
 }
 
+export interface CandidateAnalysisItem {
+  analysisId: string;
+  jobTitle?: string;
+  jobDescription?: string;
+  overallScore?: number;
+  skillsScore?: number;
+  experienceScore?: number;
+  educationScore?: number;
+  projectScore?: number;
+  trustScore?: number;
+  recommendation?: string;
+  strengths?: string[];
+  concerns?: string[];
+  status: string;
+  createdAt: string;
+}
+
+export interface CandidateResumeItem {
+  resumeId: string;
+  fileName: string;
+  status: string;
+  candidateName?: string;
+  candidateEmail?: string;
+  skills?: string[];
+  totalYearsExperience?: number;
+  location?: { city?: string; state?: string; country?: string };
+  createdAt: string;
+  updatedAt?: string;
+  errorMessage?: string;
+  analyses: CandidateAnalysisItem[];
+}
+
+export interface CandidateMyResumesResponse {
+  resumes: CandidateResumeItem[];
+  totalResumes: number;
+}
+
+export interface CandidateProfileResponse {
+  userId: string;
+  email: string;
+  fullName?: string;
+  totalResumes: number;
+  totalAnalyses: number;
+  averageScore?: number;
+  topSkills?: string[];
+  lastActivity?: string;
+}
+
 export interface AnalysisResult {
   analysisId: string;
   resumeId: string;
@@ -200,16 +248,36 @@ export interface AnalysisResult {
 // API Functions
 // ============================================================================
 
+function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = localStorage.getItem("auth-storage");
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return parsed?.state?.token || null;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 async function fetchAPI<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options?.headers as Record<string, string>),
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
+    headers,
   });
 
   if (!res.ok) {
@@ -393,6 +461,18 @@ export const candidateAPI = {
   // Get analysis result
   getAnalysisResult: (analysisId: string): Promise<AnalysisResult> =>
     fetchAPI(`/analyses/${analysisId}`),
+
+  // Dashboard: Get all my resumes with analyses
+  getMyResumes: (): Promise<CandidateMyResumesResponse> =>
+    fetchAPI("/candidate/my-resumes"),
+
+  // Dashboard: Get my profile summary
+  getMyProfile: (): Promise<CandidateProfileResponse> =>
+    fetchAPI("/candidate/profile"),
+
+  // Dashboard: Get download URL for my resume
+  getMyResumeDownloadUrl: (resumeId: string): Promise<{ downloadUrl: string }> =>
+    fetchAPI(`/candidate/resumes/${resumeId}/download`),
 };
 
 // ============================================================================

@@ -8,13 +8,19 @@ import { Label } from '@/components/ui/label'
 import { sendOtp, verifyOtp } from '@/lib/auth-api'
 import { useAuthStore } from '@/lib/auth-store'
 import { toast } from 'sonner'
-import { Loader2, Mail, KeyRound } from 'lucide-react'
+import { Loader2, Mail, User } from 'lucide-react'
+import { OtpInput } from '@/components/ui/otp-input'
+
+type AuthMode = 'login' | 'signup'
+type Step = 'form' | 'otp'
 
 export function CandidateLogin () {
   const router = useRouter()
   const setAuth = useAuthStore(state => state.setAuth)
 
-  const [step, setStep] = useState<'email' | 'otp'>('email')
+  const [mode, setMode] = useState<AuthMode>('login')
+  const [step, setStep] = useState<Step>('form')
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
@@ -26,7 +32,7 @@ export function CandidateLogin () {
     try {
       const result = await sendOtp({
         email,
-        type: 'login',
+        type: mode,
         role: 'candidate'
       })
 
@@ -36,7 +42,7 @@ export function CandidateLogin () {
       } else {
         toast.error(result.message)
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to send OTP. Please try again.')
     } finally {
       setLoading(false)
@@ -51,64 +57,65 @@ export function CandidateLogin () {
       const result = await verifyOtp({
         email,
         otp,
-        type: 'login'
+        type: mode,
+        ...(mode === 'signup' && fullName.trim() ? { fullName: fullName.trim() } : {})
       })
 
       if (result.success && result.token && result.user) {
         setAuth(result.user, result.token)
-        toast.success('Login successful!')
+        toast.success(mode === 'signup' ? 'Account created successfully!' : 'Login successful!')
         router.push('/candidate')
       } else {
         toast.error(result.message)
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to verify OTP. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSignup = async () => {
-    if (!email.trim()) {
-      toast.error('Please enter your email first')
-      return
-    }
-
-    setLoading(true)
-
-    try {
-      const result = await sendOtp({
-        email,
-        type: 'signup',
-        role: 'candidate'
-      })
-
-      if (result.success) {
-        toast.success(result.message)
-        setStep('otp')
-      } else {
-        toast.error(result.message)
-      }
-    } catch (error) {
-      toast.error('Failed to send OTP. Please try again.')
-    } finally {
-      setLoading(false)
-    }
+  const switchMode = (newMode: AuthMode) => {
+    setMode(newMode)
+    setStep('form')
+    setOtp('')
   }
 
   return (
     <div className='w-full max-w-md space-y-6'>
       <div className='space-y-2 text-center'>
-        <h1 className='text-3xl font-bold'>Candidate Login</h1>
+        <h1 className='text-3xl font-bold'>
+          {mode === 'login' ? 'Candidate Login' : 'Candidate Sign Up'}
+        </h1>
         <p className='text-muted-foreground'>
-          {step === 'email'
-            ? 'Enter your email to receive a verification code'
+          {step === 'form'
+            ? mode === 'login'
+              ? 'Enter your email to receive a verification code'
+              : 'Create your account to get started'
             : 'Enter the 6-digit code sent to your email'}
         </p>
       </div>
 
-      {step === 'email' ? (
+      {step === 'form' ? (
         <form onSubmit={handleSendOtp} className='space-y-4'>
+          {mode === 'signup' && (
+            <div className='space-y-2'>
+              <Label htmlFor='fullName'>Full Name</Label>
+              <div className='relative'>
+                <User className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
+                <Input
+                  id='fullName'
+                  type='text'
+                  placeholder='John Doe'
+                  value={fullName}
+                  onChange={e => setFullName(e.target.value)}
+                  required
+                  className='pl-10'
+                />
+              </div>
+            </div>
+          )}
+
           <div className='space-y-2'>
             <Label htmlFor='email'>Email</Label>
             <div className='relative'>
@@ -131,49 +138,56 @@ export function CandidateLogin () {
                 <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                 Sending...
               </>
-            ) : (
+            ) : mode === 'login' ? (
               'Continue with Email'
+            ) : (
+              'Create Account'
             )}
           </Button>
 
           <div className='text-center text-sm'>
-            <span className='text-muted-foreground'>
-              Don&apos;t have an account?{' '}
-            </span>
-            <Button
-              type='button'
-              variant='link'
-              className='p-0 h-auto font-semibold'
-              onClick={e => {
-                e.preventDefault()
-                e.stopPropagation()
-                handleSignup()
-              }}
-              disabled={loading}
-            >
-              Sign up
-            </Button>
+            {mode === 'login' ? (
+              <>
+                <span className='text-muted-foreground'>
+                  Don&apos;t have an account?{' '}
+                </span>
+                <Button
+                  type='button'
+                  variant='link'
+                  className='p-0 h-auto font-semibold'
+                  onClick={() => switchMode('signup')}
+                  disabled={loading}
+                >
+                  Sign up
+                </Button>
+              </>
+            ) : (
+              <>
+                <span className='text-muted-foreground'>
+                  Already have an account?{' '}
+                </span>
+                <Button
+                  type='button'
+                  variant='link'
+                  className='p-0 h-auto font-semibold'
+                  onClick={() => switchMode('login')}
+                  disabled={loading}
+                >
+                  Log in
+                </Button>
+              </>
+            )}
           </div>
         </form>
       ) : (
         <form onSubmit={handleVerifyOtp} className='space-y-4'>
-          <div className='space-y-2'>
-            <Label htmlFor='otp'>Verification Code</Label>
-            <div className='relative'>
-              <KeyRound className='absolute left-3 top-3 h-4 w-4 text-muted-foreground' />
-              <Input
-                id='otp'
-                type='text'
-                placeholder='000000'
-                value={otp}
-                onChange={e =>
-                  setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))
-                }
-                required
-                maxLength={6}
-                className='pl-10 text-center text-2xl tracking-widest'
-              />
-            </div>
+          <div className='space-y-3'>
+            <Label>Verification Code</Label>
+            <OtpInput
+              value={otp}
+              onChange={setOtp}
+              disabled={loading}
+            />
           </div>
 
           <Button
@@ -186,6 +200,8 @@ export function CandidateLogin () {
                 <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                 Verifying...
               </>
+            ) : mode === 'signup' ? (
+              'Verify & Create Account'
             ) : (
               'Verify & Login'
             )}
@@ -196,10 +212,10 @@ export function CandidateLogin () {
               type='button'
               variant='link'
               className='p-0 h-auto'
-              onClick={() => setStep('email')}
+              onClick={() => setStep('form')}
               disabled={loading}
             >
-              ← Back to email
+              &larr; Back
             </Button>
           </div>
         </form>

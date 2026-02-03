@@ -24,7 +24,6 @@ import { useResumeSSE } from '@/lib/use-sse'
 import Loader from '@/components/shared/loader'
 import { toast } from 'sonner'
 import type { QuickAnalyzeResponse } from '@/lib/screening-api'
-import { ProtectedRoute } from '@/components/auth/protected-route'
 
 function CandidatePageContent () {
   const [resumeText, setResumeText] = useState('')
@@ -258,9 +257,5 @@ We are looking for a Senior Frontend Developer with:
 }
 
 export default function CandidatePage () {
-  return (
-    <ProtectedRoute requiredRole='candidate'>
-      <CandidatePageContent />
-    </ProtectedRoute>
-  )
+  return <CandidatePageContent />
 }

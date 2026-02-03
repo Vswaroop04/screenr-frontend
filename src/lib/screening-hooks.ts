@@ -22,6 +22,8 @@ export const screeningKeys = {
   jobCandidates: (id: string) => ["jobs", id, "candidates"] as const,
   resumeStatus: (id: string) => ["resumes", id, "status"] as const,
   analysis: (id: string) => ["analyses", id] as const,
+  candidateResumes: ["candidate", "resumes"] as const,
+  candidateProfile: ["candidate", "profile"] as const,
 };
 
 // ============================================================================
@@ -278,5 +280,49 @@ export function useAnalyzeResume() {
       resumeId: string;
       jobDescription: string;
     }) => candidateAPI.analyzeResume(resumeId, jobDescription),
+  });
+}
+
+export function useCandidateResumes() {
+  return useQuery({
+    queryKey: screeningKeys.candidateResumes,
+    queryFn: () => candidateAPI.getMyResumes(),
+  });
+}
+
+export function useCandidateProfile() {
+  return useQuery({
+    queryKey: screeningKeys.candidateProfile,
+    queryFn: () => candidateAPI.getMyProfile(),
+  });
+}
+
+export function useCandidateResumeDownload() {
+  return useMutation({
+    mutationFn: async (resumeId: string) => {
+      const { downloadUrl } = await candidateAPI.getMyResumeDownloadUrl(resumeId);
+      window.open(downloadUrl, "_blank");
+      return downloadUrl;
+    },
+  });
+}
+
+export function useCandidateUploadResume() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const { resumeId, uploadUrl } = await candidateAPI.getUploadUrl(
+        file.name,
+        file.type
+      );
+      await uploadFileToS3(uploadUrl, file);
+      await candidateAPI.confirmUpload(resumeId, file.name, file.size);
+      return { resumeId, fileName: file.name };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: screeningKeys.candidateResumes });
+      queryClient.invalidateQueries({ queryKey: screeningKeys.candidateProfile });
+    },
   });
 }

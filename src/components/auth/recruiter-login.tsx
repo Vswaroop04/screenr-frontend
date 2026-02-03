@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { sendOtp, verifyOtp } from "@/lib/auth-api";
 import { useAuthStore } from "@/lib/auth-store";
 import { toast } from "sonner";
-import { Loader2, Mail, KeyRound } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
+import { OtpInput } from "@/components/ui/otp-input";
 
 export function RecruiterLogin() {
   const router = useRouter();
@@ -124,21 +125,13 @@ export function RecruiterLogin() {
         </form>
       ) : (
         <form onSubmit={handleVerifyOtp} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="otp">Verification Code</Label>
-            <div className="relative">
-              <KeyRound className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="otp"
-                type="text"
-                placeholder="000000"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                required
-                maxLength={6}
-                className="pl-10 text-center text-2xl tracking-widest"
-              />
-            </div>
+          <div className="space-y-3">
+            <Label>Verification Code</Label>
+            <OtpInput
+              value={otp}
+              onChange={setOtp}
+              disabled={loading}
+            />
           </div>
 
           <Button type="submit" className="w-full" disabled={loading || otp.length !== 6}>

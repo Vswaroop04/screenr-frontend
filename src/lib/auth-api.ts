@@ -10,6 +10,7 @@ export interface VerifyOtpRequest {
   email: string
   otp: string
   type: 'login' | 'signup'
+  fullName?: string
 }
 
 export interface RecruiterSignupData {

@@ -46,6 +46,7 @@ import {
 } from '@/components/ui/table'
 import { FileUpload } from '@/components/screening/file-upload'
 import { CandidateCard } from '@/components/screening/candidate-card'
+import { CandidateDetailDialog } from '@/components/screening/candidate-detail-dialog'
 import {
   useJob,
   useJobCandidates,
@@ -60,7 +61,7 @@ import {
 } from '@/lib/screening-hooks'
 import { exportCandidatesToCSV } from '@/lib/csv-export'
 import { useJobSSE } from '@/lib/use-sse'
-import type { ScoringWeights, CustomPreferences } from '@/lib/screening-api'
+import type { ScoringWeights, CustomPreferences, Candidate } from '@/lib/screening-api'
 import Loader from '@/components/shared/loader'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { RecruiterLayout } from '@/components/layout/recruiter-layout'
@@ -98,7 +99,7 @@ function JobDetailContent ({ params }: PageProps) {
   const bulkShortlist = useBulkShortlist(jobId)
   const assignGroup = useAssignGroup(jobId)
 
-  const [viewMode, setViewMode] = useState<'card' | 'table'>('card')
+  const [viewMode, setViewMode] = useState<'card' | 'table'>('table')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortField, setSortField] = useState<SortField>('score')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
@@ -107,6 +108,8 @@ function JobDetailContent ({ params }: PageProps) {
   const [groupName, setGroupName] = useState('')
   const [filterShortlisted, setFilterShortlisted] = useState(false)
   const [filterGroup, setFilterGroup] = useState<string | null>(null)
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false)
 
   const [weights, setWeights] = useState<ScoringWeights>({
     skills: 0.4,
@@ -668,9 +671,9 @@ function JobDetailContent ({ params }: PageProps) {
                       </TableRow>
                     ) : (
                       sortedCandidates.map(candidate => (
-                        <TableRow key={candidate.resumeId} className={selectedCandidates.has(candidate.resumeId) ? 'bg-muted/50' : ''}>
+                        <TableRow key={candidate.resumeId} className={`cursor-pointer hover:bg-muted/30 ${selectedCandidates.has(candidate.resumeId) ? 'bg-muted/50' : ''}`} onClick={() => { setSelectedCandidate(candidate); setDetailDialogOpen(true) }}>
                           <TableCell>
-                            <button onClick={() => handleToggleSelect(candidate.resumeId)} className='p-1'>
+                            <button onClick={(e) => { e.stopPropagation(); handleToggleSelect(candidate.resumeId) }} className='p-1'>
                               {selectedCandidates.has(candidate.resumeId)
                                 ? <CheckSquare className='h-4 w-4' />
                                 : <Square className='h-4 w-4 text-muted-foreground' />
@@ -679,7 +682,7 @@ function JobDetailContent ({ params }: PageProps) {
                           </TableCell>
                           <TableCell>
                             <button
-                              onClick={() => handleToggleShortlist(candidate.resumeId, !!candidate.isShortlisted)}
+                              onClick={(e) => { e.stopPropagation(); handleToggleShortlist(candidate.resumeId, !!candidate.isShortlisted) }}
                               className='p-1 hover:scale-110 transition-transform'
                             >
                               <Star className={`h-4 w-4 ${candidate.isShortlisted ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
@@ -740,7 +743,7 @@ function JobDetailContent ({ params }: PageProps) {
                               <Button
                                 variant='outline'
                                 size='sm'
-                                onClick={() => handleReprocess(candidate.resumeId)}
+                                onClick={(e) => { e.stopPropagation(); handleReprocess(candidate.resumeId) }}
                                 disabled={reprocessResume.isPending}
                               >
                                 <RotateCcw className='h-3 w-3 mr-1' />
@@ -772,6 +775,7 @@ function JobDetailContent ({ params }: PageProps) {
                         key={candidate.resumeId}
                         candidate={candidate}
                         rank={i + 1}
+                        onClick={() => { setSelectedCandidate(candidate); setDetailDialogOpen(true) }}
                       />
                     ))}
                   </div>
@@ -791,6 +795,7 @@ function JobDetailContent ({ params }: PageProps) {
                       <CandidateCard
                         key={candidate.resumeId}
                         candidate={candidate}
+                        onClick={() => { setSelectedCandidate(candidate); setDetailDialogOpen(true) }}
                       />
                     ))}
                   </div>
@@ -810,6 +815,7 @@ function JobDetailContent ({ params }: PageProps) {
                       <CandidateCard
                         key={candidate.resumeId}
                         candidate={candidate}
+                        onClick={() => { setSelectedCandidate(candidate); setDetailDialogOpen(true) }}
                       />
                     ))}
                   </div>
@@ -829,6 +835,7 @@ function JobDetailContent ({ params }: PageProps) {
                       <div key={candidate.resumeId}>
                         <CandidateCard
                           candidate={candidate}
+                          onClick={() => { setSelectedCandidate(candidate); setDetailDialogOpen(true) }}
                         />
                         {candidate.status === 'failed' && (
                           <Button
@@ -1189,6 +1196,13 @@ function JobDetailContent ({ params }: PageProps) {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Candidate Detail Dialog */}
+      <CandidateDetailDialog
+        candidate={selectedCandidate}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+      />
     </div>
   )
 }

@@ -5,42 +5,42 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Logo } from '@/components/ui/logo'
 import {
-  Briefcase,
-  Users,
-  Settings,
-  UserPlus,
-  LayoutDashboard
+  LayoutDashboard,
+  FileText,
+  Sparkles,
+  User,
+  Settings
 } from 'lucide-react'
 
 const navigation = [
   {
     name: 'Dashboard',
-    href: '/recruiter/home',
+    href: '/candidate/home',
     icon: LayoutDashboard
   },
   {
-    name: 'Jobs',
-    href: '/recruiter',
-    icon: Briefcase
+    name: 'My Resumes',
+    href: '/candidate/resumes',
+    icon: FileText
   },
   {
-    name: 'Candidates',
-    href: '/recruiter/candidates',
-    icon: Users
+    name: 'Match Checker',
+    href: '/candidate',
+    icon: Sparkles
   },
   {
-    name: 'Team',
-    href: '/recruiter/team',
-    icon: UserPlus
+    name: 'Profile',
+    href: '/candidate/profile',
+    icon: User
   },
   {
     name: 'Settings',
-    href: '/recruiter/settings',
+    href: '/candidate/settings',
     icon: Settings
   }
 ]
 
-export function RecruiterSidebar () {
+export function CandidateSidebar () {
   const pathname = usePathname()
 
   return (
@@ -50,12 +50,11 @@ export function RecruiterSidebar () {
       </div>
       <nav className='flex-1 space-y-1 px-3 py-4'>
         {navigation.map(item => {
-          // More specific active detection to avoid multiple highlights
           const isActive =
             pathname === item.href ||
-            (item.href !== '/recruiter' &&
+            (item.href !== '/candidate' &&
               pathname?.startsWith(item.href + '/')) ||
-            (item.href === '/recruiter' && pathname === '/recruiter')
+            (item.href === '/candidate' && pathname === '/candidate')
           return (
             <Link
               key={item.name}

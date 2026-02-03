@@ -9,6 +9,7 @@ import { recruiterSignup, sendOtp, verifyOtp } from "@/lib/auth-api";
 import { useAuthStore } from "@/lib/auth-store";
 import { toast } from "sonner";
 import { Loader2, Building2, User, Mail, Phone, Briefcase, Globe } from "lucide-react";
+import { OtpInput } from "@/components/ui/otp-input";
 
 const INDUSTRIES = [
   "technology",
@@ -284,17 +285,12 @@ export function RecruiterSignup() {
         </form>
       ) : (
         <form onSubmit={handleVerifyOtp} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="otp">Verification Code</Label>
-            <Input
-              id="otp"
-              type="text"
-              placeholder="000000"
+          <div className="space-y-3">
+            <Label>Verification Code</Label>
+            <OtpInput
               value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              required
-              maxLength={6}
-              className="text-center text-2xl tracking-widest"
+              onChange={setOtp}
+              disabled={loading}
             />
           </div>
 
