@@ -2,7 +2,16 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Plus, Briefcase, Users, Clock, ArrowRight } from 'lucide-react'
+import {
+  Plus,
+  Briefcase,
+  Users,
+  Clock,
+  ArrowRight,
+  Search,
+  Edit,
+  Trash2
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -21,6 +30,19 @@ import {
   DialogTrigger
 } from '@/components/ui/dialog'
 import { useJobs, useCreateJob } from '@/lib/screening-hooks'
+import { Input } from '@/components/ui/input'
+import { recruiterAPI, type Job } from '@/lib/screening-api'
+import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
 import Loader from '@/components/shared/loader'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { RecruiterLayout } from '@/components/layout/recruiter-layout'
@@ -30,6 +52,58 @@ function RecruiterDashboardContent () {
   const { data: jobsData, isLoading } = useJobs()
   const createJob = useCreateJob()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [editingJob, setEditingJob] = useState<Job | null>(null)
+  const [deletingJobId, setDeletingJobId] = useState<string | null>(null)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleEditJob = (job: Job) => {
+    setEditingJob(job)
+    setIsEditDialogOpen(true)
+  }
+
+  const handleUpdateJob = async (formData: any) => {
+    if (!editingJob) return
+
+    try {
+      await recruiterAPI.updateJob(editingJob.id, {
+        title: formData.title,
+        company: formData.company,
+        location: formData.location,
+        description: formData.description,
+        requiredSkills: formData.skills,
+        preferredSkills: formData.niceToHaveSkills
+      })
+
+      toast.success('Job updated successfully')
+      setIsEditDialogOpen(false)
+      setEditingJob(null)
+      // Refetch jobs
+      window.location.reload()
+    } catch (error) {
+      console.error('Failed to update job:', error)
+      toast.error('Failed to update job')
+    }
+  }
+
+  const handleDeleteJob = async () => {
+    if (!deletingJobId) return
+
+    setIsDeleting(true)
+    try {
+      await recruiterAPI.archiveJob(deletingJobId)
+      toast.success('Job archived successfully')
+      setDeletingJobId(null)
+      // Refetch jobs
+      window.location.reload()
+    } catch (error) {
+      console.error('Failed to archive job:', error)
+      toast.error('Failed to archive job')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   const handleCreateJob = async (formData: any) => {
     try {
@@ -38,8 +112,22 @@ function RecruiterDashboardContent () {
         title: formData.title,
         company: formData.company,
         location: formData.location,
-        description: formData.description
-        // Add additional fields as needed by your API
+        description: formData.description,
+        // User-provided skills (these will be used for AI analysis)
+        requiredSkills: formData.skills || [],
+        preferredSkills: formData.niceToHaveSkills || [],
+        // Job metadata for better AI analysis context
+        jobMetadata: {
+          locationType: formData.locationType,
+          employmentType: formData.employmentType,
+          experienceLevel: formData.experienceLevel,
+          department: formData.department,
+          salaryMin: formData.salaryMin ? parseInt(formData.salaryMin) : undefined,
+          salaryMax: formData.salaryMax ? parseInt(formData.salaryMax) : undefined,
+          salaryCurrency: formData.salaryCurrency,
+          responsibilities: formData.responsibilities || [],
+          requirements: formData.requirements || []
+        }
       }
       await createJob.mutateAsync(jobData)
       setIsDialogOpen(false)
@@ -69,12 +157,25 @@ function RecruiterDashboardContent () {
     )
   }
 
-  const jobs = jobsData?.jobs || []
+  const allJobs = jobsData?.jobs || []
+
+  // Filter jobs based on search query and exclude archived
+  const jobs = allJobs.filter(job => {
+    if (job.status === 'archived') return false
+    if (!searchQuery) return true
+    const query = searchQuery.toLowerCase()
+    return (
+      job.title.toLowerCase().includes(query) ||
+      job.company?.toLowerCase().includes(query) ||
+      job.location?.toLowerCase().includes(query) ||
+      job.requiredSkills?.some(skill => skill.toLowerCase().includes(query))
+    )
+  })
 
   return (
     <div className='container mx-auto py-8 px-4'>
       {/* Header */}
-      <div className='flex items-center justify-between mb-8'>
+      <div className='flex items-center justify-between mb-6'>
         <div>
           <h1 className='text-3xl font-bold'>Jobs</h1>
           <p className='text-muted-foreground'>
@@ -88,7 +189,7 @@ function RecruiterDashboardContent () {
               New Job
             </Button>
           </DialogTrigger>
-          <DialogContent className='max-w-4xl max-h-[90vh]'>
+          <DialogContent className='max-w-[1400px] max-h-[90vh] w-[98vw]'>
             <DialogHeader>
               <DialogTitle>Create New Job</DialogTitle>
               <DialogDescription>
@@ -103,6 +204,21 @@ function RecruiterDashboardContent () {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Search Bar */}
+      {allJobs.length > 0 && (
+        <div className='mb-6'>
+          <div className='relative max-w-md'>
+            <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+            <Input
+              placeholder='Search jobs by title, company, location, or skills...'
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className='pl-10'
+            />
+          </div>
+        </div>
+      )}
 
       {/* Jobs List */}
       {jobs.length === 0 ? (
@@ -124,7 +240,7 @@ function RecruiterDashboardContent () {
           {jobs.map(job => (
             <Card
               key={job.id}
-              className='hover:border-primary transition-colors'
+              className='hover:border-primary transition-colors cursor-pointer'
             >
               <CardHeader>
                 <div className='flex items-start justify-between'>
@@ -172,17 +288,102 @@ function RecruiterDashboardContent () {
                   </div>
                 )}
 
-                <Button asChild variant='outline' className='w-full'>
-                  <Link href={`/recruiter/${job.id}`}>
-                    View Candidates
-                    <ArrowRight className='ml-2 h-4 w-4' />
-                  </Link>
-                </Button>
+                <div className='flex gap-2'>
+                  <Button asChild variant='outline' className='flex-1'>
+                    <Link href={`/recruiter/${job.id}`}>
+                      View Candidates
+                      <ArrowRight className='ml-2 h-4 w-4' />
+                    </Link>
+                  </Button>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    onClick={() => handleEditJob(job)}
+                    title='Edit job'
+                  >
+                    <Edit className='h-4 w-4' />
+                  </Button>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    onClick={() => setDeletingJobId(job.id)}
+                    title='Archive job'
+                  >
+                    <Trash2 className='h-4 w-4 text-destructive' />
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
         </div>
       )}
+
+      {/* Edit Job Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className='max-w-[1400px] max-h-[90vh] w-[98vw]'>
+          <DialogHeader>
+            <DialogTitle>Edit Job</DialogTitle>
+            <DialogDescription>
+              Update job details, skills, and requirements
+            </DialogDescription>
+          </DialogHeader>
+          {editingJob && (
+            <EnhancedJobForm
+              onSubmit={handleUpdateJob}
+              onCancel={() => {
+                setIsEditDialogOpen(false)
+                setEditingJob(null)
+              }}
+              isLoading={false}
+              isEditing={true}
+              initialData={{
+                title: editingJob.title,
+                company: editingJob.company || '',
+                location: editingJob.location || '',
+                description: editingJob.description,
+                skills: editingJob.requiredSkills || [],
+                niceToHaveSkills: editingJob.preferredSkills || [],
+                department: '',
+                locationType: 'remote',
+                employmentType: 'full-time',
+                experienceLevel: 'mid',
+                salaryMin: '',
+                salaryMax: '',
+                salaryCurrency: 'USD',
+                responsibilities: [],
+                requirements: []
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={!!deletingJobId}
+        onOpenChange={() => setDeletingJobId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive this job?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will archive the job and hide it from your active jobs list.
+              The job and all candidate data will be preserved and can be
+              restored later if needed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteJob}
+              disabled={isDeleting}
+              className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+            >
+              {isDeleting ? 'Archiving...' : 'Archive Job'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

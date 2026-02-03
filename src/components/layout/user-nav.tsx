@@ -54,8 +54,11 @@ export function UserNav () {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant='ghost' className='relative h-10 w-10 rounded-full'>
-          <Avatar className='h-10 w-10'>
+        <Button
+          variant='ghost'
+          className='relative h-10 w-10 rounded-full cursor-pointer'
+        >
+          <Avatar className='h-10 w-10 cursor-pointer'>
             <AvatarImage
               src={user.profilePicture || undefined}
               alt={user.fullName || user.email}
@@ -81,16 +84,22 @@ export function UserNav () {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleDashboard}>
+        <DropdownMenuItem onClick={handleDashboard} className='cursor-pointer'>
           <LayoutDashboard className='mr-2 h-4 w-4' />
           <span>Dashboard</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push(`/${user.role}/settings`)}>
+        <DropdownMenuItem
+          onClick={() => router.push(`/${user.role}/settings`)}
+          className='cursor-pointer'
+        >
           <Settings className='h-4 w-4 mr-2' />
           Settings
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout} className='text-red-600'>
+        <DropdownMenuItem
+          onClick={handleLogout}
+          className='text-red-600 cursor-pointer'
+        >
           <LogOut className='mr-2 h-4 w-4' />
           <span>Log out</span>
         </DropdownMenuItem>

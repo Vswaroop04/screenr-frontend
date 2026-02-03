@@ -61,7 +61,11 @@ import {
 } from '@/lib/screening-hooks'
 import { exportCandidatesToCSV } from '@/lib/csv-export'
 import { useJobSSE } from '@/lib/use-sse'
-import type { ScoringWeights, CustomPreferences, Candidate } from '@/lib/screening-api'
+import type {
+  ScoringWeights,
+  CustomPreferences,
+  Candidate
+} from '@/lib/screening-api'
 import Loader from '@/components/shared/loader'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { RecruiterLayout } from '@/components/layout/recruiter-layout'
@@ -99,16 +103,21 @@ function JobDetailContent ({ params }: PageProps) {
   const bulkShortlist = useBulkShortlist(jobId)
   const assignGroup = useAssignGroup(jobId)
 
+  const [activeTab, setActiveTab] = useState('candidates')
   const [viewMode, setViewMode] = useState<'card' | 'table'>('table')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortField, setSortField] = useState<SortField>('score')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
-  const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(new Set())
+  const [selectedCandidates, setSelectedCandidates] = useState<Set<string>>(
+    new Set()
+  )
   const [showGroupDialog, setShowGroupDialog] = useState(false)
   const [groupName, setGroupName] = useState('')
   const [filterShortlisted, setFilterShortlisted] = useState(false)
   const [filterGroup, setFilterGroup] = useState<string | null>(null)
-  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(
+    null
+  )
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
 
   const [weights, setWeights] = useState<ScoringWeights>({
@@ -178,7 +187,9 @@ function JobDetailContent ({ params }: PageProps) {
     if (selectedCandidates.size === sortedCandidates?.length) {
       setSelectedCandidates(new Set())
     } else {
-      setSelectedCandidates(new Set(sortedCandidates?.map(c => c.resumeId) || []))
+      setSelectedCandidates(
+        new Set(sortedCandidates?.map(c => c.resumeId) || [])
+      )
     }
   }
 
@@ -214,7 +225,11 @@ function JobDetailContent ({ params }: PageProps) {
       setSelectedCandidates(new Set())
       setGroupName('')
       setShowGroupDialog(false)
-      toast.success(`Assigned ${selectedCandidates.size} candidate(s) to "${groupName.trim()}"`)
+      toast.success(
+        `Assigned ${
+          selectedCandidates.size
+        } candidate(s) to "${groupName.trim()}"`
+      )
     } catch {
       toast.error('Failed to assign group')
     }
@@ -266,13 +281,16 @@ function JobDetailContent ({ params }: PageProps) {
     let comparison = 0
     switch (sortField) {
       case 'name':
-        comparison = (a.candidateName || '').localeCompare(b.candidateName || '')
+        comparison = (a.candidateName || '').localeCompare(
+          b.candidateName || ''
+        )
         break
       case 'score':
         comparison = (a.overallScore || 0) - (b.overallScore || 0)
         break
       case 'experience':
-        comparison = (a.totalYearsExperience || 0) - (b.totalYearsExperience || 0)
+        comparison =
+          (a.totalYearsExperience || 0) - (b.totalYearsExperience || 0)
         break
       case 'status':
         comparison = (a.status || '').localeCompare(b.status || '')
@@ -285,7 +303,9 @@ function JobDetailContent ({ params }: PageProps) {
   const strongMatches = sortedCandidates.filter(
     c => c.recommendation === 'strong_yes' || c.recommendation === 'yes'
   )
-  const maybeMatches = sortedCandidates.filter(c => c.recommendation === 'maybe')
+  const maybeMatches = sortedCandidates.filter(
+    c => c.recommendation === 'maybe'
+  )
   const weakMatches = sortedCandidates.filter(
     c => c.recommendation === 'no' || c.recommendation === 'strong_no'
   )
@@ -341,12 +361,22 @@ function JobDetailContent ({ params }: PageProps) {
             </div>
           </div>
           <div className='flex gap-2'>
+            {candidates.length > 0 && (
+              <Button
+                variant='default'
+                onClick={() => setActiveTab('upload')}
+                size='sm'
+              >
+                <Upload className='mr-2 h-4 w-4' />
+                Upload More
+              </Button>
+            )}
             <Button
               variant='outline'
               onClick={async () => {
                 try {
-                  await recomputeRanking.mutateAsync()
-                  toast.success('Re-ranking queued')
+                  await recomputeRanking.mutateAsync(undefined)
+                  toast.success('Re-ranking queued for all candidates')
                 } catch {
                   toast.error('Failed to re-rank')
                 }
@@ -359,7 +389,7 @@ function JobDetailContent ({ params }: PageProps) {
                   recomputeRanking.isPending ? 'animate-spin' : ''
                 }`}
               />
-              Re-rank
+              Re-rank All
             </Button>
             <Button
               variant='outline'
@@ -468,12 +498,14 @@ function JobDetailContent ({ params }: PageProps) {
         </Card>
       )}
 
-      {/* Main Content */}
-      <Tabs defaultValue='candidates' className='space-y-4'>
+      {/* Tabs */}
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className='space-y-4'
+      >
         <TabsList>
-          <TabsTrigger value='candidates'>
-            Candidates ({candidates.length})
-          </TabsTrigger>
+          <TabsTrigger value='candidates'>Candidates</TabsTrigger>
           <TabsTrigger value='analytics' disabled>
             <Lock className='mr-1.5 h-4 w-4' />
             Analytics (Locked)
@@ -501,7 +533,11 @@ function JobDetailContent ({ params }: PageProps) {
                 size='sm'
                 onClick={() => setFilterShortlisted(!filterShortlisted)}
               >
-                <Star className={`h-4 w-4 mr-1 ${filterShortlisted ? 'fill-current' : ''}`} />
+                <Star
+                  className={`h-4 w-4 mr-1 ${
+                    filterShortlisted ? 'fill-current' : ''
+                  }`}
+                />
                 Shortlisted ({shortlistedCount})
               </Button>
               {allGroups.length > 0 && (
@@ -512,7 +548,9 @@ function JobDetailContent ({ params }: PageProps) {
                 >
                   <option value=''>All Groups</option>
                   {allGroups.map(g => (
-                    <option key={g} value={g}>{g}</option>
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
                   ))}
                 </select>
               )}
@@ -539,15 +577,51 @@ function JobDetailContent ({ params }: PageProps) {
               <span className='text-sm font-medium'>
                 {selectedCandidates.size} selected
               </span>
-              <Button size='sm' variant='outline' onClick={handleBulkShortlist} disabled={bulkShortlist.isPending}>
+              <Button
+                size='sm'
+                variant='default'
+                onClick={async () => {
+                  try {
+                    const selectedIds = Array.from(selectedCandidates)
+                    await recomputeRanking.mutateAsync(selectedIds)
+                    toast.success(
+                      `Re-ranking queued for ${selectedIds.length} candidate(s)`
+                    )
+                  } catch {
+                    toast.error('Failed to re-rank selected candidates')
+                  }
+                }}
+                disabled={recomputeRanking.isPending}
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 mr-1 ${
+                    recomputeRanking.isPending ? 'animate-spin' : ''
+                  }`}
+                />
+                Rank Selected
+              </Button>
+              <Button
+                size='sm'
+                variant='outline'
+                onClick={handleBulkShortlist}
+                disabled={bulkShortlist.isPending}
+              >
                 <Star className='h-3.5 w-3.5 mr-1' />
                 Shortlist
               </Button>
-              <Button size='sm' variant='outline' onClick={() => setShowGroupDialog(true)}>
+              <Button
+                size='sm'
+                variant='outline'
+                onClick={() => setShowGroupDialog(true)}
+              >
                 <FolderPlus className='h-3.5 w-3.5 mr-1' />
                 Assign Group
               </Button>
-              <Button size='sm' variant='ghost' onClick={() => setSelectedCandidates(new Set())}>
+              <Button
+                size='sm'
+                variant='ghost'
+                onClick={() => setSelectedCandidates(new Set())}
+              >
                 <X className='h-3.5 w-3.5 mr-1' />
                 Clear
               </Button>
@@ -562,25 +636,106 @@ function JobDetailContent ({ params }: PageProps) {
                 value={groupName}
                 onChange={e => setGroupName(e.target.value)}
                 className='max-w-sm'
-                onKeyDown={e => { if (e.key === 'Enter') handleAssignGroup() }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleAssignGroup()
+                }}
               />
               {allGroups.length > 0 && (
                 <div className='flex gap-1'>
                   {allGroups.map(g => (
-                    <Button key={g} variant='outline' size='sm' onClick={() => setGroupName(g)}>
+                    <Button
+                      key={g}
+                      variant='outline'
+                      size='sm'
+                      onClick={() => setGroupName(g)}
+                    >
                       {g}
                     </Button>
                   ))}
                 </div>
               )}
-              <Button size='sm' onClick={handleAssignGroup} disabled={!groupName.trim() || assignGroup.isPending}>
+              <Button
+                size='sm'
+                onClick={handleAssignGroup}
+                disabled={!groupName.trim() || assignGroup.isPending}
+              >
                 Assign
               </Button>
-              <Button size='sm' variant='ghost' onClick={() => { setShowGroupDialog(false); setGroupName('') }}>
+              <Button
+                size='sm'
+                variant='ghost'
+                onClick={() => {
+                  setShowGroupDialog(false)
+                  setGroupName('')
+                }}
+              >
                 Cancel
               </Button>
             </div>
           )}
+
+          {/* Processing Progress Indicator */}
+          {(() => {
+            const processingCandidates = candidates.filter(
+              c =>
+                c.status === 'uploaded' ||
+                c.status === 'parsing' ||
+                c.status === 'analyzing'
+            )
+            const totalCandidates = candidates.length
+            const completedCandidates = candidates.filter(
+              c => c.status === 'analyzed' || c.status === 'parsed'
+            ).length
+            const failedCandidates = candidates.filter(
+              c => c.status === 'failed'
+            ).length
+            const progressPercent =
+              totalCandidates > 0
+                ? Math.round((completedCandidates / totalCandidates) * 100)
+                : 0
+
+            if (processingCandidates.length > 0) {
+              return (
+                <Card className='mb-4 border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/30'>
+                  <CardContent className='py-4'>
+                    <div className='flex items-center justify-between mb-2'>
+                      <div className='flex items-center gap-2'>
+                        <RefreshCw className='h-4 w-4 animate-spin text-blue-600' />
+                        <span className='text-sm font-medium text-blue-900 dark:text-blue-100'>
+                          Processing resumes...
+                        </span>
+                      </div>
+                      <span className='text-sm text-blue-700 dark:text-blue-300'>
+                        {completedCandidates} of {totalCandidates} completed (
+                        {progressPercent}%)
+                        {failedCandidates > 0 && (
+                          <span className='text-red-600 ml-2'>
+                            • {failedCandidates} failed
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div className='w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2'>
+                      <div
+                        className='bg-blue-600 h-2 rounded-full transition-all duration-300'
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                    <div className='mt-2 text-xs text-blue-600 dark:text-blue-400'>
+                      Currently processing:{' '}
+                      {processingCandidates
+                        .slice(0, 3)
+                        .map(c => c.candidateName || c.fileName)
+                        .join(', ')}
+                      {processingCandidates.length > 3 &&
+                        ` and ${processingCandidates.length - 3} more`}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            }
+            return null
+          })()}
 
           {candidatesLoading ? (
             <div className='flex justify-center py-8'>
@@ -591,9 +746,13 @@ function JobDetailContent ({ params }: PageProps) {
               <CardContent className='flex flex-col items-center justify-center py-12'>
                 <Upload className='h-12 w-12 text-muted-foreground mb-4' />
                 <h3 className='text-lg font-semibold mb-2'>No resumes yet</h3>
-                <p className='text-muted-foreground text-center'>
+                <p className='text-muted-foreground text-center mb-4'>
                   Upload resumes to start screening candidates
                 </p>
+                <Button onClick={() => setActiveTab('upload')}>
+                  <Upload className='mr-2 h-4 w-4' />
+                  Upload Resumes
+                </Button>
               </CardContent>
             </Card>
           ) : viewMode === 'table' ? (
@@ -605,10 +764,13 @@ function JobDetailContent ({ params }: PageProps) {
                     <TableRow>
                       <TableHead className='w-10'>
                         <button onClick={handleSelectAll} className='p-1'>
-                          {selectedCandidates.size === sortedCandidates.length && sortedCandidates.length > 0
-                            ? <CheckSquare className='h-4 w-4' />
-                            : <Square className='h-4 w-4 text-muted-foreground' />
-                          }
+                          {selectedCandidates.size ===
+                            sortedCandidates.length &&
+                          sortedCandidates.length > 0 ? (
+                            <CheckSquare className='h-4 w-4' />
+                          ) : (
+                            <Square className='h-4 w-4 text-muted-foreground' />
+                          )}
                         </button>
                       </TableHead>
                       <TableHead className='w-10'></TableHead>
@@ -648,6 +810,7 @@ function JobDetailContent ({ params }: PageProps) {
                       </TableHead>
                       <TableHead>Recommendation</TableHead>
                       <TableHead>Group</TableHead>
+                      <TableHead>Uploaded</TableHead>
                       <TableHead>
                         <Button
                           variant='ghost'
@@ -665,27 +828,60 @@ function JobDetailContent ({ params }: PageProps) {
                   <TableBody>
                     {sortedCandidates.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={10} className='text-center py-8 text-muted-foreground'>
+                        <TableCell
+                          colSpan={11}
+                          className='text-center py-8 text-muted-foreground'
+                        >
                           No candidates match your search
                         </TableCell>
                       </TableRow>
                     ) : (
                       sortedCandidates.map(candidate => (
-                        <TableRow key={candidate.resumeId} className={`cursor-pointer hover:bg-muted/30 ${selectedCandidates.has(candidate.resumeId) ? 'bg-muted/50' : ''}`} onClick={() => { setSelectedCandidate(candidate); setDetailDialogOpen(true) }}>
+                        <TableRow
+                          key={candidate.resumeId}
+                          className={`cursor-pointer hover:bg-muted/30 ${
+                            selectedCandidates.has(candidate.resumeId)
+                              ? 'bg-muted/50'
+                              : ''
+                          }`}
+                          onClick={() => {
+                            setSelectedCandidate(candidate)
+                            setDetailDialogOpen(true)
+                          }}
+                        >
                           <TableCell>
-                            <button onClick={(e) => { e.stopPropagation(); handleToggleSelect(candidate.resumeId) }} className='p-1'>
-                              {selectedCandidates.has(candidate.resumeId)
-                                ? <CheckSquare className='h-4 w-4' />
-                                : <Square className='h-4 w-4 text-muted-foreground' />
-                              }
+                            <button
+                              onClick={e => {
+                                e.stopPropagation()
+                                handleToggleSelect(candidate.resumeId)
+                              }}
+                              className='p-1'
+                            >
+                              {selectedCandidates.has(candidate.resumeId) ? (
+                                <CheckSquare className='h-4 w-4' />
+                              ) : (
+                                <Square className='h-4 w-4 text-muted-foreground' />
+                              )}
                             </button>
                           </TableCell>
                           <TableCell>
                             <button
-                              onClick={(e) => { e.stopPropagation(); handleToggleShortlist(candidate.resumeId, !!candidate.isShortlisted) }}
+                              onClick={e => {
+                                e.stopPropagation()
+                                handleToggleShortlist(
+                                  candidate.resumeId,
+                                  !!candidate.isShortlisted
+                                )
+                              }}
                               className='p-1 hover:scale-110 transition-transform'
                             >
-                              <Star className={`h-4 w-4 ${candidate.isShortlisted ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`} />
+                              <Star
+                                className={`h-4 w-4 ${
+                                  candidate.isShortlisted
+                                    ? 'fill-yellow-400 text-yellow-400'
+                                    : 'text-muted-foreground'
+                                }`}
+                              />
                             </button>
                           </TableCell>
                           <TableCell>
@@ -701,7 +897,11 @@ function JobDetailContent ({ params }: PageProps) {
                           </TableCell>
                           <TableCell>
                             {candidate.overallScore !== undefined ? (
-                              <span className={getScoreColor(candidate.overallScore)}>
+                              <span
+                                className={getScoreColor(
+                                  candidate.overallScore
+                                )}
+                              >
                                 {Math.round(candidate.overallScore)}%
                               </span>
                             ) : (
@@ -717,7 +917,8 @@ function JobDetailContent ({ params }: PageProps) {
                             {candidate.recommendation ? (
                               <Badge
                                 variant={
-                                  candidate.recommendation === 'strong_yes' || candidate.recommendation === 'yes'
+                                  candidate.recommendation === 'strong_yes' ||
+                                  candidate.recommendation === 'yes'
                                     ? 'success'
                                     : candidate.recommendation === 'maybe'
                                     ? 'warning'
@@ -732,18 +933,38 @@ function JobDetailContent ({ params }: PageProps) {
                           </TableCell>
                           <TableCell>
                             {candidate.groupName ? (
-                              <Badge variant='outline'>{candidate.groupName}</Badge>
+                              <Badge variant='outline'>
+                                {candidate.groupName}
+                              </Badge>
                             ) : (
                               <span className='text-muted-foreground'>—</span>
                             )}
                           </TableCell>
-                          <TableCell>{getStatusBadge(candidate.status)}</TableCell>
+                          <TableCell className='text-xs text-muted-foreground'>
+                            {candidate.uploadedAt
+                              ? new Date(candidate.uploadedAt).toLocaleDateString(
+                                  'en-US',
+                                  {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  }
+                                )
+                              : '—'}
+                          </TableCell>
+                          <TableCell>
+                            {getStatusBadge(candidate.status)}
+                          </TableCell>
                           <TableCell>
                             {candidate.status === 'failed' && (
                               <Button
                                 variant='outline'
                                 size='sm'
-                                onClick={(e) => { e.stopPropagation(); handleReprocess(candidate.resumeId) }}
+                                onClick={e => {
+                                  e.stopPropagation()
+                                  handleReprocess(candidate.resumeId)
+                                }}
                                 disabled={reprocessResume.isPending}
                               >
                                 <RotateCcw className='h-3 w-3 mr-1' />
@@ -775,7 +996,10 @@ function JobDetailContent ({ params }: PageProps) {
                         key={candidate.resumeId}
                         candidate={candidate}
                         rank={i + 1}
-                        onClick={() => { setSelectedCandidate(candidate); setDetailDialogOpen(true) }}
+                        onClick={() => {
+                          setSelectedCandidate(candidate)
+                          setDetailDialogOpen(true)
+                        }}
                       />
                     ))}
                   </div>
@@ -795,7 +1019,10 @@ function JobDetailContent ({ params }: PageProps) {
                       <CandidateCard
                         key={candidate.resumeId}
                         candidate={candidate}
-                        onClick={() => { setSelectedCandidate(candidate); setDetailDialogOpen(true) }}
+                        onClick={() => {
+                          setSelectedCandidate(candidate)
+                          setDetailDialogOpen(true)
+                        }}
                       />
                     ))}
                   </div>
@@ -815,7 +1042,10 @@ function JobDetailContent ({ params }: PageProps) {
                       <CandidateCard
                         key={candidate.resumeId}
                         candidate={candidate}
-                        onClick={() => { setSelectedCandidate(candidate); setDetailDialogOpen(true) }}
+                        onClick={() => {
+                          setSelectedCandidate(candidate)
+                          setDetailDialogOpen(true)
+                        }}
                       />
                     ))}
                   </div>
@@ -835,7 +1065,10 @@ function JobDetailContent ({ params }: PageProps) {
                       <div key={candidate.resumeId}>
                         <CandidateCard
                           candidate={candidate}
-                          onClick={() => { setSelectedCandidate(candidate); setDetailDialogOpen(true) }}
+                          onClick={() => {
+                            setSelectedCandidate(candidate)
+                            setDetailDialogOpen(true)
+                          }}
                         />
                         {candidate.status === 'failed' && (
                           <Button
@@ -1164,7 +1397,7 @@ function JobDetailContent ({ params }: PageProps) {
                         ? { questions, preferences }
                         : undefined
                   })
-                  await recomputeRanking.mutateAsync()
+                  await recomputeRanking.mutateAsync(undefined)
                   toast.success('Saved & re-ranking queued')
                 } catch {
                   toast.error('Failed')

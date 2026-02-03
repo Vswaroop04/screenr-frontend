@@ -158,7 +158,7 @@ export function useRecomputeRanking(jobId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: () => recruiterAPI.recomputeRanking(jobId),
+    mutationFn: (resumeIds?: string[]) => recruiterAPI.recomputeRanking(jobId, resumeIds),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: screeningKeys.jobCandidates(jobId),
