@@ -111,10 +111,26 @@ export async function getMe (
   return response.json()
 }
 
+export async function adminLogin (
+  email: string,
+  password: string
+): Promise<AuthResponse> {
+  const response = await fetch(`${API_BASE_URL}/auth/admin/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ email, password })
+  })
+
+  return response.json()
+}
+
 export const authApi = {
   sendOtp,
   verifyOtp,
   recruiterSignup,
   logout,
-  getMe
+  getMe,
+  adminLogin
 }

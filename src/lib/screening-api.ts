@@ -105,6 +105,8 @@ export interface Candidate {
   fileName: string
   candidateName?: string
   candidateEmail?: string
+  jobId?: string
+  jobTitle?: string
   overallScore?: number
   skillsScore?: number
   experienceScore?: number
@@ -724,6 +726,279 @@ export const teamAPI = {
       method: 'POST',
       body: JSON.stringify({ token, userId })
     })
+}
+
+// ============================================================================
+// Usage API
+// ============================================================================
+
+export interface UsageStatus {
+  // Recruiter limits
+  resumesUsedThisMonth: number
+  resumesLimitThisMonth: number
+  resumesRemaining: number
+  activeJobsCount: number
+  activeJobsLimit: number
+  canCreateJob: boolean
+  canUploadResume: boolean
+
+  // Candidate limits
+  analysesUsedThisMonth: number
+  analysesLimitThisMonth: number
+  analysesRemaining: number
+  canRunAnalysis: boolean
+
+  // Lifetime stats
+  lifetimeResumesUploaded: number
+  lifetimeJobsCreated: number
+  lifetimeAnalyses: number
+
+  // Period info
+  currentPeriodStart: string
+  planType: string
+}
+
+export const usageAPI = {
+  // Get current usage status
+  getUsageStatus: (): Promise<UsageStatus> => fetchAPI('/usage/status'),
+
+  // Get available plans (for pricing page)
+  getPlans: (): Promise<{
+    plans: Array<{
+      id: string
+      name: string
+      price: number
+      priceDisplay: string
+      recruiter: {
+        maxActiveJobs: number | string
+        maxResumesPerMonth: number | string
+      }
+      candidate: {
+        maxAnalysesPerMonth: number | string
+      }
+    }>
+  }> => fetchAPI('/plans')
+}
+
+// ============================================================================
+// Dashboard API
+// ============================================================================
+
+export interface DashboardStats {
+  activeJobs: number
+  totalCandidates: number
+  verifiedCandidates: number
+  pendingReviews: number
+}
+
+export const dashboardAPI = {
+  getStats: (): Promise<DashboardStats> => fetchAPI('/dashboard/stats'),
+
+  getAllCandidates: (): Promise<{ candidates: Candidate[] }> =>
+    fetchAPI('/candidates')
+}
+
+// ============================================================================
+// Admin API
+// ============================================================================
+
+export interface AdminUser {
+  id: string
+  email: string
+  fullName?: string
+  role: string
+  isActive: boolean
+  isEmailVerified: boolean
+  createdAt: string
+  lastLoginAt?: string
+  planType?: string
+  resumesUploadedThisMonth?: number
+  jobsCreatedThisMonth?: number
+  analysesThisMonth?: number
+  lifetimeResumesUploaded?: number
+  lifetimeJobsCreated?: number
+  lifetimeAnalyses?: number
+}
+
+export interface SystemStats {
+  totalUsers: number
+  totalRecruiters: number
+  totalCandidates: number
+  activeUsersLast30Days: number
+  totalJobs: number
+  activeJobs: number
+  totalResumes: number
+  totalAnalyses: number
+  planDistribution: {
+    free: number
+    starter: number
+    pro: number
+    enterprise: number
+  }
+}
+
+export const adminAPI = {
+  // Get system-wide statistics
+  getStats: (): Promise<SystemStats> => fetchAPI('/admin/stats'),
+
+  // Get admin dashboard summary
+  getDashboard: (): Promise<{
+    stats: SystemStats
+    recentUsers: AdminUser[]
+    recentJobs: Array<{
+      id: string
+      title: string
+      recruiterEmail: string
+      createdAt: string
+    }>
+  }> => fetchAPI('/admin/dashboard'),
+
+  // List all users
+  listUsers: (params?: {
+    role?: string
+    planType?: string
+    limit?: number
+    offset?: number
+  }): Promise<{ users: AdminUser[]; total: number }> => {
+    const searchParams = new URLSearchParams()
+    if (params?.role) searchParams.set('role', params.role)
+    if (params?.planType) searchParams.set('planType', params.planType)
+    if (params?.limit) searchParams.set('limit', params.limit.toString())
+    if (params?.offset) searchParams.set('offset', params.offset.toString())
+    const query = searchParams.toString()
+    return fetchAPI(`/admin/users${query ? `?${query}` : ''}`)
+  },
+
+  // Get single user details
+  getUser: (
+    userId: string
+  ): Promise<{
+    user: AdminUser
+    jobs: Array<{
+      id: string
+      title: string
+      status: string
+      resumeCount: number
+    }>
+    recentActivity: Array<{ type: string; description: string; date: string }>
+  }> => fetchAPI(`/admin/users/${userId}`),
+
+  // Update user's plan
+  updateUserPlan: (
+    userId: string,
+    planType: string,
+    reason?: string
+  ): Promise<{ success: boolean; message: string }> =>
+    fetchAPI(`/admin/users/${userId}/plan`, {
+      method: 'PUT',
+      body: JSON.stringify({ userId, planType, reason })
+    }),
+
+  // Grant usage bonus
+  grantUsageBonus: (
+    userId: string,
+    bonusResumes?: number,
+    bonusAnalyses?: number,
+    reason?: string
+  ): Promise<{ success: boolean; message: string }> =>
+    fetchAPI(`/admin/users/${userId}/grant-usage`, {
+      method: 'POST',
+      body: JSON.stringify({ userId, bonusResumes, bonusAnalyses, reason })
+    }),
+
+  // Reset user's monthly usage
+  resetUserUsage: (
+    userId: string,
+    reason?: string
+  ): Promise<{ success: boolean; message: string }> =>
+    fetchAPI(`/admin/users/${userId}/reset-usage`, {
+      method: 'POST',
+      body: JSON.stringify({ userId, reason })
+    }),
+
+  // Activate/deactivate user
+  toggleUserStatus: (
+    userId: string,
+    isActive: boolean,
+    reason?: string
+  ): Promise<{ success: boolean; message: string }> =>
+    fetchAPI(`/admin/users/${userId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ userId, isActive, reason })
+    }),
+
+  // Get recent jobs
+  getRecentJobs: (params?: {
+    limit?: number
+    offset?: number
+  }): Promise<{
+    jobs: Array<{
+      id: string
+      title: string
+      company?: string
+      status: string
+      resumeCount: number
+      recruiterEmail: string
+      createdAt: string
+    }>
+    total: number
+  }> => {
+    const searchParams = new URLSearchParams()
+    if (params?.limit) searchParams.set('limit', params.limit.toString())
+    if (params?.offset) searchParams.set('offset', params.offset.toString())
+    const query = searchParams.toString()
+    return fetchAPI(`/admin/jobs${query ? `?${query}` : ''}`)
+  },
+
+  // Get candidates uploaded by a specific user
+  getUserCandidates: (
+    userId: string,
+    params?: { limit?: number; offset?: number }
+  ): Promise<{
+    candidates: Array<{
+      resumeId: string
+      fileName: string
+      candidateName?: string
+      candidateEmail?: string
+      status: string
+      jobId?: string
+      jobTitle?: string
+      uploadedAt: string
+    }>
+    total: number
+  }> => {
+    const searchParams = new URLSearchParams()
+    if (params?.limit) searchParams.set('limit', params.limit.toString())
+    if (params?.offset) searchParams.set('offset', params.offset.toString())
+    const query = searchParams.toString()
+    return fetchAPI(`/admin/users/${userId}/candidates${query ? `?${query}` : ''}`)
+  }
+}
+
+// ============================================================================
+// Debug API (for development)
+// ============================================================================
+
+export const debugAPI = {
+  // Check job ownership - helps identify why jobs aren't showing
+  getJobOwnership: (): Promise<{
+    currentUserId: string
+    currentUserEmail: string
+    currentUserRole: string
+    jobsInDb: Array<{
+      id: string
+      title: string
+      recruiterId: string | null
+      status: string
+    }>
+    matchingJobs: number
+    orphanJobs: number
+    otherUserJobs: number
+  }> => fetchAPI('/debug/job-ownership'),
+
+  // Claim all jobs for current user (development only)
+  claimAllJobs: (): Promise<{ success: boolean; claimed: number }> =>
+    fetchAPI('/debug/claim-all-jobs', { method: 'POST' })
 }
 
 // ============================================================================

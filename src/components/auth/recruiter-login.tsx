@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { sendOtp, verifyOtp } from "@/lib/auth-api";
 import { useAuthStore } from "@/lib/auth-store";
 import { toast } from "sonner";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2, Mail, User } from "lucide-react";
+import Link from "next/link";
 import { OtpInput } from "@/components/ui/otp-input";
 
 export function RecruiterLogin() {
@@ -158,6 +159,19 @@ export function RecruiterLogin() {
           </div>
         </form>
       )}
+
+      {/* Switch to Candidate */}
+      <div className="pt-6 border-t">
+        <div className="text-center text-sm text-muted-foreground mb-3">
+          Looking for a job?
+        </div>
+        <Link href="/auth/candidate">
+          <Button variant="outline" className="w-full">
+            <User className="mr-2 h-4 w-4" />
+            Login as Candidate
+          </Button>
+        </Link>
+      </div>
     </div>
   );
 }

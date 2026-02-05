@@ -11,6 +11,7 @@ import {
   UserPlus,
   LayoutDashboard
 } from 'lucide-react'
+import { UsageDisplay } from './usage-display'
 
 const navigation = [
   {
@@ -73,6 +74,8 @@ export function RecruiterSidebar () {
           )
         })}
       </nav>
+      {/* Usage Limits Display */}
+      <UsageDisplay role='recruiter' />
     </div>
   )
 }

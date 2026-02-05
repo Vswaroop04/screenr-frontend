@@ -39,9 +39,14 @@ import {
   Users,
   Download,
   Mail,
-  Eye
+  Eye,
+  FileText,
+  ExternalLink
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
+import { dashboardAPI, recruiterAPI } from '@/lib/screening-api'
+import { exportToCSV } from '@/lib/csv-export'
+import { toast } from 'sonner'
 
 interface Candidate {
   id: string
@@ -54,21 +59,18 @@ interface Candidate {
   status: 'new' | 'reviewed' | 'shortlisted' | 'rejected'
   isShortlisted: boolean
   group?: string
+  jobId?: string
+  jobTitle?: string
+  resumeId?: string
 }
 
-type SortField = 'name' | 'score' | 'appliedDate'
+type SortField = 'name' | 'score' | 'appliedDate' | 'job'
 type SortOrder = 'asc' | 'desc'
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
 
 export function CandidateTableView () {
   const { data: candidatesData, isLoading } = useQuery({
     queryKey: ['candidates'],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/candidates`)
-      if (!response.ok) throw new Error('Failed to fetch candidates')
-      return response.json()
-    }
+    queryFn: () => dashboardAPI.getAllCandidates()
   })
 
   const [candidates, setCandidates] = useState<Candidate[]>([])
@@ -85,6 +87,7 @@ export function CandidateTableView () {
     if (candidatesData?.candidates) {
       const mapped = candidatesData.candidates.map((c: any) => ({
         id: c.resumeId,
+        resumeId: c.resumeId,
         name: c.candidateName || 'Unknown',
         email: c.candidateEmail || '',
         score: c.overallScore || 0,
@@ -94,7 +97,9 @@ export function CandidateTableView () {
           : 'N/A',
         appliedDate: c.processedAt || new Date().toISOString(),
         status: c.status === 'parsed' ? 'reviewed' : 'new',
-        isShortlisted: false
+        isShortlisted: false,
+        jobId: c.jobId || '',
+        jobTitle: c.jobTitle || ''
       }))
       setCandidates(mapped)
     }
@@ -154,6 +159,46 @@ export function CandidateTableView () {
     setShowGroupDialog(false)
   }
 
+  const handleViewResume = async (resumeId: string) => {
+    try {
+      const { downloadUrl } = await recruiterAPI.getResumeDownloadUrl(resumeId)
+      window.open(downloadUrl, '_blank')
+    } catch (error) {
+      toast.error('Failed to load resume')
+    }
+  }
+
+  const handleContact = (email: string) => {
+    if (email) {
+      window.location.href = `mailto:${email}`
+    } else {
+      toast.error('No email available for this candidate')
+    }
+  }
+
+  const handleExport = () => {
+    if (filteredCandidates.length === 0) {
+      toast.error('No candidates to export')
+      return
+    }
+
+    const rows = filteredCandidates.map(c => ({
+      Name: c.name,
+      Email: c.email,
+      Score: c.score,
+      Skills: c.skills.join('; '),
+      Experience: c.experience,
+      'Applied Date': new Date(c.appliedDate).toLocaleDateString(),
+      Status: c.status,
+      Shortlisted: c.isShortlisted ? 'Yes' : 'No',
+      Group: c.group || '',
+      Job: c.jobTitle || ''
+    }))
+
+    exportToCSV(rows as unknown as Record<string, unknown>[], 'candidates_export.csv')
+    toast.success(`Exported ${filteredCandidates.length} candidates`)
+  }
+
   // Filter and sort candidates
   const filteredCandidates = candidates
     .filter(c => {
@@ -174,6 +219,8 @@ export function CandidateTableView () {
       } else if (sortField === 'appliedDate') {
         comparison =
           new Date(a.appliedDate).getTime() - new Date(b.appliedDate).getTime()
+      } else if (sortField === 'job') {
+        comparison = (a.jobTitle || '').localeCompare(b.jobTitle || '')
       }
       return sortOrder === 'asc' ? comparison : -comparison
     })
@@ -282,7 +329,7 @@ export function CandidateTableView () {
               </DropdownMenu>
             </div>
             <div className='flex items-center gap-2'>
-              <Button variant='outline' size='sm'>
+              <Button variant='outline' size='sm' onClick={handleExport}>
                 <Download className='h-4 w-4 mr-2' />
                 Export
               </Button>
@@ -340,14 +387,25 @@ export function CandidateTableView () {
                 </TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Group</TableHead>
-                <TableHead className='w-12'></TableHead>
+                <TableHead>
+                  <Button
+                    variant='ghost'
+                    size='sm'
+                    onClick={() => handleSort('job')}
+                    className='flex items-center gap-1'
+                  >
+                    Job
+                    <ArrowUpDown className='h-3 w-3' />
+                  </Button>
+                </TableHead>
+                <TableHead className='w-12'>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredCandidates.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={10}
+                    colSpan={11}
                     className='text-center py-8 text-muted-foreground'
                   >
                     No candidates found
@@ -422,6 +480,15 @@ export function CandidateTableView () {
                       )}
                     </TableCell>
                     <TableCell>
+                      {candidate.jobTitle ? (
+                        <Badge variant='secondary' className='text-xs'>
+                          {candidate.jobTitle}
+                        </Badge>
+                      ) : (
+                        <span className='text-muted-foreground'>—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant='ghost' size='sm'>
@@ -429,13 +496,17 @@ export function CandidateTableView () {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align='end'>
-                          <DropdownMenuItem>
-                            <Eye className='h-4 w-4 mr-2' />
-                            View Details
+                          <DropdownMenuItem
+                            onClick={() => candidate.resumeId && handleViewResume(candidate.resumeId)}
+                          >
+                            <FileText className='h-4 w-4 mr-2' />
+                            View Resume
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleContact(candidate.email)}
+                          >
                             <Mail className='h-4 w-4 mr-2' />
-                            Send Email
+                            Contact
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem

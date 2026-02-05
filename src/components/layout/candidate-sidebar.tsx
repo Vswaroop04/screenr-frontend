@@ -7,10 +7,10 @@ import { Logo } from '@/components/ui/logo'
 import {
   LayoutDashboard,
   FileText,
-  Sparkles,
   User,
   Settings
 } from 'lucide-react'
+import { UsageDisplay } from './usage-display'
 
 const navigation = [
   {
@@ -22,11 +22,6 @@ const navigation = [
     name: 'My Resumes',
     href: '/candidate/resumes',
     icon: FileText
-  },
-  {
-    name: 'Match Checker',
-    href: '/candidate',
-    icon: Sparkles
   },
   {
     name: 'Profile',
@@ -72,6 +67,8 @@ export function CandidateSidebar () {
           )
         })}
       </nav>
+      {/* Usage Limits Display */}
+      <UsageDisplay role='candidate' />
     </div>
   )
 }

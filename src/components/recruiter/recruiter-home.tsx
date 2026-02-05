@@ -15,8 +15,7 @@ import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 
 import { RecruiterLayout } from '@/components/layout/recruiter-layout'
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+import { dashboardAPI } from '@/lib/screening-api'
 
 function RecruiterHomeContent () {
   const router = useRouter()
@@ -24,11 +23,7 @@ function RecruiterHomeContent () {
 
   const { data: statsData, isLoading } = useQuery({
     queryKey: ['dashboard-stats'],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/dashboard/stats`)
-      if (!response.ok) throw new Error('Failed to fetch stats')
-      return response.json()
-    },
+    queryFn: () => dashboardAPI.getStats(),
     refetchInterval: 30000 // Refresh every 30 seconds
   })
 

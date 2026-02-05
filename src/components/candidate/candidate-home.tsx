@@ -181,24 +181,6 @@ export function CandidateHome () {
               <ArrowRight className='w-4 h-4 text-muted-foreground' />
             </CardContent>
           </Card>
-
-          <Card
-            className='cursor-pointer hover:shadow-md transition-shadow'
-            onClick={() => router.push('/candidate')}
-          >
-            <CardContent className='pt-6 flex items-center gap-4'>
-              <div className='w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center flex-shrink-0'>
-                <Sparkles className='w-5 h-5 text-purple-500' />
-              </div>
-              <div className='flex-1'>
-                <p className='font-medium'>Match Checker</p>
-                <p className='text-sm text-muted-foreground'>
-                  Quick match against a job description
-                </p>
-              </div>
-              <ArrowRight className='w-4 h-4 text-muted-foreground' />
-            </CardContent>
-          </Card>
         </div>
 
         {/* Recent Resumes */}

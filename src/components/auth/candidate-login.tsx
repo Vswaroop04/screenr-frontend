@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label'
 import { sendOtp, verifyOtp } from '@/lib/auth-api'
 import { useAuthStore } from '@/lib/auth-store'
 import { toast } from 'sonner'
-import { Loader2, Mail, User } from 'lucide-react'
+import { Loader2, Mail, User, Briefcase } from 'lucide-react'
+import Link from 'next/link'
 import { OtpInput } from '@/components/ui/otp-input'
 
 type AuthMode = 'login' | 'signup'
@@ -220,6 +221,19 @@ export function CandidateLogin () {
           </div>
         </form>
       )}
+
+      {/* Switch to Recruiter */}
+      <div className='pt-6 border-t'>
+        <div className='text-center text-sm text-muted-foreground mb-3'>
+          Are you hiring?
+        </div>
+        <Link href='/auth/recruiter/login'>
+          <Button variant='outline' className='w-full'>
+            <Briefcase className='mr-2 h-4 w-4' />
+            Login as Recruiter
+          </Button>
+        </Link>
+      </div>
     </div>
   )
 }

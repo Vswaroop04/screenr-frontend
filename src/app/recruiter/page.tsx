@@ -130,9 +130,21 @@ function RecruiterDashboardContent () {
         }
       }
       await createJob.mutateAsync(jobData)
+      toast.success('Job created successfully!')
       setIsDialogOpen(false)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create job:', error)
+      // Extract error message from API response
+      const errorMessage = error?.message || 'Failed to create job'
+      // Check for plan limit errors
+      if (errorMessage.includes('limit') || errorMessage.includes('upgrade') || errorMessage.includes('plan')) {
+        toast.error(errorMessage, {
+          description: 'Upgrade your plan to create more jobs',
+          duration: 5000
+        })
+      } else {
+        toast.error(errorMessage)
+      }
     }
   }
 

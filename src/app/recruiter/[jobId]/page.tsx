@@ -22,7 +22,9 @@ import {
   FolderPlus,
   CheckSquare,
   Square,
-  X
+  X,
+  Eye,
+  Mail
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -957,20 +959,54 @@ function JobDetailContent ({ params }: PageProps) {
                             {getStatusBadge(candidate.status)}
                           </TableCell>
                           <TableCell>
-                            {candidate.status === 'failed' && (
-                              <Button
-                                variant='outline'
-                                size='sm'
-                                onClick={e => {
-                                  e.stopPropagation()
-                                  handleReprocess(candidate.resumeId)
-                                }}
-                                disabled={reprocessResume.isPending}
-                              >
-                                <RotateCcw className='h-3 w-3 mr-1' />
-                                Reprocess
-                              </Button>
-                            )}
+                            <div className='flex items-center gap-1'>
+                              {candidate.status === 'failed' ? (
+                                <Button
+                                  variant='outline'
+                                  size='sm'
+                                  onClick={e => {
+                                    e.stopPropagation()
+                                    handleReprocess(candidate.resumeId)
+                                  }}
+                                  disabled={reprocessResume.isPending}
+                                >
+                                  <RotateCcw className='h-3 w-3 mr-1' />
+                                  Reprocess
+                                </Button>
+                              ) : (
+                                <>
+                                  <Button
+                                    variant='ghost'
+                                    size='sm'
+                                    onClick={async e => {
+                                      e.stopPropagation()
+                                      try {
+                                        const { downloadUrl } = await import('@/lib/screening-api').then(m => m.recruiterAPI.getResumeDownloadUrl(candidate.resumeId))
+                                        window.open(downloadUrl, '_blank')
+                                      } catch {
+                                        toast.error('Failed to load resume')
+                                      }
+                                    }}
+                                    title='View Resume'
+                                  >
+                                    <Eye className='h-4 w-4' />
+                                  </Button>
+                                  {candidate.candidateEmail && (
+                                    <Button
+                                      variant='ghost'
+                                      size='sm'
+                                      onClick={e => {
+                                        e.stopPropagation()
+                                        window.location.href = `mailto:${candidate.candidateEmail}`
+                                      }}
+                                      title='Contact'
+                                    >
+                                      <Mail className='h-4 w-4' />
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
