@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   Card,
@@ -15,7 +15,23 @@ import { useAuthStore } from '@/lib/auth-store'
 import { teamAPI } from '@/lib/screening-api'
 import { toast } from 'sonner'
 
-export default function AcceptInvitationPage () {
+function AcceptInvitationFallback() {
+  return (
+    <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-muted/20 to-background p-4'>
+      <Card className='w-full max-w-md'>
+        <CardHeader className='text-center'>
+          <div className='mx-auto mb-4'>
+            <Loader2 className='h-16 w-16 animate-spin text-primary' />
+          </div>
+          <CardTitle className='text-2xl'>Loading...</CardTitle>
+          <CardDescription>Please wait...</CardDescription>
+        </CardHeader>
+      </Card>
+    </div>
+  )
+}
+
+function AcceptInvitationContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
@@ -146,5 +162,13 @@ export default function AcceptInvitationPage () {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function AcceptInvitationPage() {
+  return (
+    <Suspense fallback={<AcceptInvitationFallback />}>
+      <AcceptInvitationContent />
+    </Suspense>
   )
 }

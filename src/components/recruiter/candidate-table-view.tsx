@@ -85,18 +85,20 @@ export function CandidateTableView () {
 
   useEffect(() => {
     if (candidatesData?.candidates) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mapped = candidatesData.candidates.map((c: any) => ({
         id: c.resumeId,
         resumeId: c.resumeId,
         name: c.candidateName || 'Unknown',
         email: c.candidateEmail || '',
         score: c.overallScore || 0,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         skills: c.skillMatch?.matched?.map((s: any) => s.skill) || [],
         experience: c.totalYearsExperience
           ? `${c.totalYearsExperience} years`
           : 'N/A',
         appliedDate: c.processedAt || new Date().toISOString(),
-        status: c.status === 'parsed' ? 'reviewed' : 'new',
+        status: (c.status === 'parsed' ? 'reviewed' : 'new') as 'new' | 'reviewed' | 'shortlisted' | 'rejected',
         isShortlisted: false,
         jobId: c.jobId || '',
         jobTitle: c.jobTitle || ''
@@ -232,6 +234,7 @@ export function CandidateTableView () {
       shortlisted: 'success',
       rejected: 'destructive'
     } as const
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return <Badge variant={variants[status] as any}>{status}</Badge>
   }
 

@@ -356,7 +356,7 @@ export function EnhancedJobForm ({
                     title.toLowerCase().includes(formData.title.toLowerCase())
                   ) && (
                     <div className='px-3 py-2 text-sm text-muted-foreground italic'>
-                      Press Enter to add "{formData.title}"
+                      Press Enter to add &quot;{formData.title}&quot;
                     </div>
                   )}
               </div>
@@ -488,7 +488,7 @@ export function EnhancedJobForm ({
                       .includes(formData.department.toLowerCase())
                   ) && (
                     <div className='px-3 py-2 text-sm text-muted-foreground italic'>
-                      Press Enter to add "{formData.department}"
+                      Press Enter to add &quot;{formData.department}&quot;
                     </div>
                   )}
               </div>

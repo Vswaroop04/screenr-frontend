@@ -84,6 +84,7 @@ export function TeamManagement() {
       setInviteEmail("");
       setIsInviteDialogOpen(false);
       await fetchMembers();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.message || "Failed to send invitation");
     } finally {
