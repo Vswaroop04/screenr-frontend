@@ -24,7 +24,9 @@ import {
   Square,
   X,
   Eye,
-  Mail
+  Mail,
+  MessageSquare,
+  FileText
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -72,6 +74,8 @@ import Loader from '@/components/shared/loader'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { RecruiterLayout } from '@/components/layout/recruiter-layout'
 import { toast } from 'sonner'
+import { VerixInbox } from '@/components/recruiter/verix-inbox'
+import { ApplicationFormManager } from '@/components/recruiter/application-form-manager'
 
 interface PageProps {
   params: Promise<{ jobId: string }>
@@ -511,6 +515,14 @@ function JobDetailContent ({ params }: PageProps) {
           <TabsTrigger value='analytics' disabled>
             <Lock className='mr-1.5 h-4 w-4' />
             Analytics (Locked)
+          </TabsTrigger>
+          <TabsTrigger value='verix'>
+            <MessageSquare className='mr-1.5 h-4 w-4' />
+            Verix
+          </TabsTrigger>
+          <TabsTrigger value='application-form'>
+            <FileText className='mr-1.5 h-4 w-4' />
+            Application Form
           </TabsTrigger>
           <TabsTrigger value='upload'>Upload Resumes</TabsTrigger>
           <TabsTrigger value='settings'>Settings</TabsTrigger>
@@ -1125,6 +1137,14 @@ function JobDetailContent ({ params }: PageProps) {
               )}
             </>
           )}
+        </TabsContent>
+
+        <TabsContent value='verix' className='space-y-4'>
+          <VerixInbox jobId={jobId} />
+        </TabsContent>
+
+        <TabsContent value='application-form' className='space-y-4'>
+          <ApplicationFormManager jobId={jobId} />
         </TabsContent>
 
         <TabsContent value='analytics'>

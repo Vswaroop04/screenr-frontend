@@ -5,11 +5,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   recruiterAPI,
   candidateAPI,
+  verixRecruiterAPI,
+  applicationFormAPI,
   uploadFileToS3,
   type CreateJobRequest,
   type QuickAnalyzeRequest,
   type ScoringWeights,
   type CustomPreferences,
+  type CreateApplicationFormRequest,
+  type ApplicationFormSettings,
 } from "./screening-api";
 
 // ============================================================================
@@ -24,6 +28,8 @@ export const screeningKeys = {
   analysis: (id: string) => ["analyses", id] as const,
   candidateResumes: ["candidate", "resumes"] as const,
   candidateProfile: ["candidate", "profile"] as const,
+  verixConversations: (jobId: string) => ["verix", jobId, "conversations"] as const,
+  verixConversation: (id: string) => ["verix", "conversation", id] as const,
 };
 
 // ============================================================================
@@ -324,5 +330,77 @@ export function useCandidateUploadResume() {
       queryClient.invalidateQueries({ queryKey: screeningKeys.candidateResumes });
       queryClient.invalidateQueries({ queryKey: screeningKeys.candidateProfile });
     },
+  });
+}
+
+// ============================================================================
+// Verix Hooks
+// ============================================================================
+
+export function useVerixConversations(jobId: string) {
+  return useQuery({
+    queryKey: screeningKeys.verixConversations(jobId),
+    queryFn: () => verixRecruiterAPI.getConversations(jobId),
+    enabled: !!jobId,
+    refetchInterval: 15000,
+  });
+}
+
+export function useVerixConversationDetail(conversationId: string | null) {
+  return useQuery({
+    queryKey: screeningKeys.verixConversation(conversationId || ""),
+    queryFn: () => verixRecruiterAPI.getConversationDetail(conversationId!),
+    enabled: !!conversationId,
+  });
+}
+
+export function useRetryVerixConversation(jobId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (conversationId: string) =>
+      verixRecruiterAPI.retryConversation(conversationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: screeningKeys.verixConversations(jobId),
+      });
+    },
+  });
+}
+
+// ============================================================================
+// Application Form Hooks
+// ============================================================================
+
+export function useApplicationForm(jobId: string) {
+  return useQuery({
+    queryKey: ["applicationForm", jobId],
+    queryFn: () => applicationFormAPI.getForm(jobId),
+    enabled: !!jobId,
+  });
+}
+
+export function useCreateApplicationForm(jobId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: {
+      questions?: Array<{
+        question: string;
+        weight: "critical" | "important" | "nice_to_have";
+      }>;
+      formSettings?: ApplicationFormSettings;
+    }) => applicationFormAPI.createForm({ jobId, ...data }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["applicationForm", jobId] });
+      queryClient.invalidateQueries({ queryKey: screeningKeys.job(jobId) });
+    },
+  });
+}
+
+export function useGenerateQuestions() {
+  return useMutation({
+    mutationFn: (jobDescription: string) =>
+      applicationFormAPI.generateQuestions(jobDescription),
   });
 }

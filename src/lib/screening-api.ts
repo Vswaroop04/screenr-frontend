@@ -1002,6 +1002,299 @@ export const debugAPI = {
 }
 
 // ============================================================================
+// Verix Types
+// ============================================================================
+
+export interface VerixConversationSummary {
+  id: string
+  candidateEmail: string
+  candidateName?: string
+  status: string
+  issueCount: number
+  questionCount: number
+  trustScore?: number
+  skillsScore?: number
+  createdAt: string
+  respondedAt?: string
+}
+
+export interface VerixConversationsResponse {
+  conversations: VerixConversationSummary[]
+  total: number
+  statusBreakdown: Record<string, number>
+}
+
+export interface VerixQuestionResponse {
+  id: string
+  text: string
+  type: string
+  skill?: string
+  required: boolean
+  weight: number
+  position: number
+  response?: {
+    id: string
+    answer: string
+    responseTimeSeconds?: number
+    aiDetectionScore?: number
+    aiDetectionResult?: {
+      score: number
+      indicators: string[]
+      verdict: 'human' | 'ai_assisted' | 'ai_generated'
+    }
+    qualityScore?: number
+    qualityBreakdown?: {
+      depth: number
+      specificity: number
+      relevance: number
+      technical: number
+      overall: number
+    }
+  }
+}
+
+export interface VerixEventItem {
+  id: string
+  eventType: string
+  data?: Record<string, unknown>
+  createdAt: string
+}
+
+export interface VerixConversationDetail {
+  id: string
+  resumeId: string
+  jobId?: string
+  candidateEmail: string
+  candidateName?: string
+  status: string
+  issues: Array<{
+    type: string
+    severity: string
+    detail: string
+    value?: number
+  }>
+  trustScore?: number
+  skillsScore?: number
+  tokenExpiresAt: string
+  emailSentAt?: string
+  respondedAt?: string
+  reanalyzedAt?: string
+  createdAt: string
+  questions: VerixQuestionResponse[]
+  events: VerixEventItem[]
+}
+
+export interface VerixPublicView {
+  conversationId: string
+  candidateName?: string
+  jobTitle?: string
+  questions: Array<{
+    id: string
+    text: string
+    type: string
+    required: boolean
+    position: number
+  }>
+  expiresAt: string
+  status: string
+}
+
+// ============================================================================
+// Verix Recruiter API (Authenticated)
+// ============================================================================
+
+export const verixRecruiterAPI = {
+  getConversations: (jobId: string): Promise<VerixConversationsResponse> =>
+    fetchAPI(`/jobs/${jobId}/verix/conversations`),
+
+  getConversationDetail: (conversationId: string): Promise<VerixConversationDetail> =>
+    fetchAPI(`/verix/conversations/${conversationId}`),
+
+  retryConversation: (conversationId: string): Promise<{ success: boolean; message: string }> =>
+    fetchAPI(`/verix/conversations/${conversationId}/retry`, { method: 'POST' }),
+}
+
+// ============================================================================
+// Verix Public API (No Auth)
+// ============================================================================
+
+async function fetchPublicAPI<T> (
+  endpoint: string,
+  options?: RequestInit
+): Promise<T> {
+  const res = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options?.headers as Record<string, string>)
+    }
+  })
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Request failed' }))
+    throw new Error(error.message || `API Error: ${res.status}`)
+  }
+
+  return res.json()
+}
+
+export const verixPublicAPI = {
+  getQuestions: (token: string): Promise<VerixPublicView> =>
+    fetchPublicAPI(`/verix/${token}`),
+
+  submitAnswers: (
+    token: string,
+    answers: Array<{ questionId: string; answer: string; responseTimeSeconds?: number }>
+  ): Promise<{ success: boolean; message: string }> =>
+    fetchPublicAPI(`/verix/${token}/submit`, {
+      method: 'POST',
+      body: JSON.stringify({ token, answers })
+    }),
+}
+
+// ============================================================================
+// Application Form Types
+// ============================================================================
+
+export interface ApplicationFormSettings {
+  requireEmail?: boolean
+  requirePhone?: boolean
+  requireName?: boolean
+  allowAnonymous?: boolean
+  customMessage?: string
+}
+
+export interface CreateApplicationFormRequest {
+  jobId: string
+  questions?: Array<{
+    question: string
+    weight: 'critical' | 'important' | 'nice_to_have'
+  }>
+  formSettings?: ApplicationFormSettings
+}
+
+export interface ApplicationFormResponse {
+  hasForm: boolean
+  formLink?: string
+  questions?: Array<{
+    question: string
+    weight: 'critical' | 'important' | 'nice_to_have'
+  }>
+  formSettings?: ApplicationFormSettings
+}
+
+export interface PublicApplicationForm {
+  jobId: string
+  jobTitle: string
+  company?: string
+  description: string
+  validUntil?: string
+  isExpired: boolean
+  customMessage?: string
+  questions: Array<{
+    question: string
+    weight: 'critical' | 'important' | 'nice_to_have'
+    required?: boolean
+  }>
+  requireEmail: boolean
+  requirePhone: boolean
+  requireName: boolean
+}
+
+export interface SubmitApplicationRequest {
+  token: string
+  email: string
+  fullName?: string
+  phone?: string
+  questionResponses: Array<{
+    question: string
+    answer: string
+    weight?: 'critical' | 'important' | 'nice_to_have'
+  }>
+}
+
+// ============================================================================
+// Application Form Recruiter API (Authenticated)
+// ============================================================================
+
+export const applicationFormAPI = {
+  // Create or update application form for a job
+  createForm: (
+    data: CreateApplicationFormRequest
+  ): Promise<{ success: boolean; formLink: string; token: string }> =>
+    fetchAPI(`/jobs/${data.jobId}/application-form`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  // Get application form settings for a job
+  getForm: (jobId: string): Promise<ApplicationFormResponse> =>
+    fetchAPI(`/jobs/${jobId}/application-form`),
+
+  // Generate questions using AI
+  generateQuestions: (
+    jobDescription: string
+  ): Promise<{
+    questions: Array<{
+      question: string
+      weight: 'critical' | 'important' | 'nice_to_have'
+      reasoning: string
+    }>
+    tokensUsed: number
+  }> =>
+    fetchAPI('/jobs/generate-questions', {
+      method: 'POST',
+      body: JSON.stringify({ jobDescription })
+    })
+}
+
+// ============================================================================
+// Application Form Public API (No Auth)
+// ============================================================================
+
+export const applicationPublicAPI = {
+  // Get public application form by token
+  getForm: (token: string): Promise<PublicApplicationForm> =>
+    fetchPublicAPI(`/apply/${token}`),
+
+  // Submit application - Step 1: Send responses and get OTP
+  submitApplication: (
+    data: SubmitApplicationRequest
+  ): Promise<{ submissionId: string; emailSent: boolean; message: string }> =>
+    fetchPublicAPI(`/apply/${data.token}/submit`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+
+  // Verify email with OTP - Step 2: Get upload URL for resume
+  verifyEmail: (
+    submissionId: string,
+    otp: string
+  ): Promise<{
+    verified: boolean
+    uploadUrl?: string
+    resumeId?: string
+    fileKey?: string
+  }> =>
+    fetchPublicAPI('/apply/verify-email', {
+      method: 'POST',
+      body: JSON.stringify({ submissionId, otp })
+    }),
+
+  // Confirm resume upload - Step 3: Start processing
+  confirmUpload: (
+    submissionId: string,
+    resumeId: string,
+    fileName: string,
+    fileSize: number
+  ): Promise<{ success: boolean; message: string }> =>
+    fetchPublicAPI('/apply/confirm-upload', {
+      method: 'POST',
+      body: JSON.stringify({ submissionId, resumeId, fileName, fileSize })
+    })
+}
+
+// ============================================================================
 // File Upload Helper
 // ============================================================================
 
