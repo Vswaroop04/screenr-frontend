@@ -301,7 +301,7 @@ export default function ApplyPage({ params }: PageProps) {
         </div>
 
         {/* Error banner */}
-        {error && step !== 'success' && (
+        {error && (
           <div className='mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm'>
             {error}
           </div>
