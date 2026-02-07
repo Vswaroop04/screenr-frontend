@@ -703,7 +703,9 @@ function JobDetailContent ({ params }: PageProps) {
 
               if (!isProcessing) return false
 
-              // Check if resume is stale
+              // Check if resume is stale (if uploadedAt is available)
+              if (!c.uploadedAt) return true // Include if no timestamp
+
               const uploadedAt = new Date(c.uploadedAt).getTime()
               const timeSinceUpload = now - uploadedAt
               const isStale = timeSinceUpload > STALE_THRESHOLD_MS
