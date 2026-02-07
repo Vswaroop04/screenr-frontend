@@ -690,12 +690,28 @@ function JobDetailContent ({ params }: PageProps) {
 
           {/* Processing Progress Indicator */}
           {(() => {
-            const processingCandidates = candidates.filter(
-              c =>
+            // Timeout threshold: 10 minutes
+            const STALE_THRESHOLD_MS = 10 * 60 * 1000
+            const now = new Date().getTime()
+
+            // Filter out stale processing candidates (stuck for > 10 minutes)
+            const processingCandidates = candidates.filter(c => {
+              const isProcessing =
                 c.status === 'uploaded' ||
                 c.status === 'parsing' ||
                 c.status === 'analyzing'
-            )
+
+              if (!isProcessing) return false
+
+              // Check if resume is stale
+              const uploadedAt = new Date(c.uploadedAt).getTime()
+              const timeSinceUpload = now - uploadedAt
+              const isStale = timeSinceUpload > STALE_THRESHOLD_MS
+
+              // Don't count stale resumes as "processing"
+              return !isStale
+            })
+
             const totalCandidates = candidates.length
             const completedCandidates = candidates.filter(
               c => c.status === 'analyzed' || c.status === 'parsed'
