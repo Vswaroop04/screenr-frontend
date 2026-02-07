@@ -230,9 +230,16 @@ export function CandidateCard({ candidate, rank, onClick }: CandidateCardProps) 
             {/* Custom answers */}
             {candidate.customAnswers && candidate.customAnswers.length > 0 && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">
-                  Custom Questions
-                </p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Custom Questions
+                  </p>
+                  {candidate.customAnswers.some(ca => ca.satisfied) && (
+                    <span className="text-[10px] font-medium text-emerald-500">
+                      Verix improved score
+                    </span>
+                  )}
+                </div>
                 <div className="space-y-1">
                   {candidate.customAnswers.map((ca, i) => (
                     <div key={i} className="flex items-start gap-1 text-xs">

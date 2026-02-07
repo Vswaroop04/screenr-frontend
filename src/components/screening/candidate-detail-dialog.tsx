@@ -959,6 +959,18 @@ export function CandidateDetailDialog ({
                           <Award className='h-5 w-5 text-primary' />
                           Custom Screening Questions
                         </h3>
+                        {(() => {
+                          const satisfiedCount = candidate.customAnswers!.filter(ca => ca.satisfied).length
+                          const totalCount = candidate.customAnswers!.length
+                          return satisfiedCount > 0 ? (
+                            <div className='flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20'>
+                              <CheckCircle className='h-4 w-4 text-emerald-500' />
+                              <span className='text-sm text-emerald-600 dark:text-emerald-400'>
+                                Verix improved score — {satisfiedCount}/{totalCount} screening criteria satisfied
+                              </span>
+                            </div>
+                          ) : null
+                        })()}
                         <div className='space-y-3'>
                           {candidate.customAnswers.map((ca, i) => (
                             <div
@@ -981,6 +993,16 @@ export function CandidateDetailDialog ({
                         </div>
                       </div>
                     )}
+
+                  {/* Verix Score Improvement */}
+                  {candidate.trustFlags?.includes('verix_verified') && (
+                    <div className='flex items-center gap-2 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20'>
+                      <Shield className='h-5 w-5 text-emerald-500' />
+                      <span className='text-sm font-medium text-emerald-600 dark:text-emerald-400'>
+                        Verix improved score — candidate responded to verification questions
+                      </span>
+                    </div>
+                  )}
 
                   {/* Trust Signals */}
                   {candidate.trustFlags && candidate.trustFlags.length > 0 && (
