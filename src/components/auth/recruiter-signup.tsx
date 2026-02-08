@@ -8,9 +8,13 @@ import { Label } from "@/components/ui/label";
 import { recruiterSignup, sendOtp, verifyOtp } from "@/lib/auth-api";
 import { useAuthStore } from "@/lib/auth-store";
 import { toast } from "sonner";
-import { Loader2, Building2, User, Mail, Phone, Briefcase, Globe } from "lucide-react";
+import { Loader2, Building2, User, Mail, Phone, Briefcase, Globe, Factory } from "lucide-react";
 import Link from "next/link";
 import { OtpInput } from "@/components/ui/otp-input";
+import { ErrorText } from "@/components/ui/error-text";
+import { ProgressSteps } from "@/components/ui/progress-steps";
+import { TypingIndicator } from "@/components/ui/typing-indicator";
+import { validateEmail, validateRequired, validateURL, validatePhone } from "@/lib/validation";
 
 const INDUSTRIES = [
   "technology",
@@ -43,17 +47,92 @@ export function RecruiterSignup() {
     phoneNumber: "",
   });
 
+  const [errors, setErrors] = useState({
+    email: "",
+    fullName: "",
+    companyName: "",
+    companyWebsite: "",
+    industry: "",
+    phoneNumber: "",
+  });
+
   const [otp, setOtp] = useState("");
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+    // Clear error when user starts typing
+    if (errors[name as keyof typeof errors]) {
+      setErrors({
+        ...errors,
+        [name]: "",
+      });
+    }
+  };
+
+  const validateField = (name: string, value: string) => {
+    let error = "";
+
+    switch (name) {
+      case "email":
+        error = validateEmail(value) || "";
+        break;
+      case "fullName":
+        error = validateRequired(value, "Full name") || "";
+        break;
+      case "companyName":
+        error = validateRequired(value, "Company name") || "";
+        break;
+      case "companyWebsite":
+        error = validateURL(value) || "";
+        break;
+      case "phoneNumber":
+        error = validatePhone(value) || "";
+        break;
+      case "industry":
+        error = validateRequired(value, "Industry") || "";
+        break;
+    }
+
+    setErrors({
+      ...errors,
+      [name]: error,
+    });
+
+    return error === "";
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+    validateField(e.target.name, e.target.value);
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors = {
+      email: validateEmail(formData.email) || "",
+      fullName: validateRequired(formData.fullName, "Full name") || "",
+      companyName: validateRequired(formData.companyName, "Company name") || "",
+      companyWebsite: validateURL(formData.companyWebsite) || "",
+      phoneNumber: validatePhone(formData.phoneNumber) || "",
+      industry: validateRequired(formData.industry, "Industry") || "",
+    };
+
+    setErrors(newErrors);
+
+    return !Object.values(newErrors).some((error) => error !== "");
   };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate form before submission
+    if (!validateForm()) {
+      toast.error("Please fix the errors before submitting");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -108,17 +187,24 @@ export function RecruiterSignup() {
 
   return (
     <div className="w-full max-w-2xl space-y-6">
-      <div className="space-y-2 text-center">
+      <div className="space-y-4 text-center">
         <h1 className="text-3xl font-bold">Organization Sign Up</h1>
         <p className="text-muted-foreground">
           {step === "details"
             ? "Create your organization account to start hiring verified talent"
             : "Enter the verification code sent to your email"}
         </p>
+        <ProgressSteps
+          steps={[
+            { label: "Details", status: step === "details" ? "current" : "completed" },
+            { label: "Verification", status: step === "otp" ? "current" : "upcoming" },
+          ]}
+          className="pt-4"
+        />
       </div>
 
       {step === "details" ? (
-        <form onSubmit={handleSignup} className="space-y-6">
+        <form onSubmit={handleSignup} className="space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
           <div className="grid md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name *</Label>
@@ -131,10 +217,13 @@ export function RecruiterSignup() {
                   placeholder="John Doe"
                   value={formData.fullName}
                   onChange={handleInputChange}
+                  onBlur={handleBlur}
                   required
                   className="pl-10"
+                  aria-invalid={!!errors.fullName}
                 />
               </div>
+              {errors.fullName && <ErrorText>{errors.fullName}</ErrorText>}
             </div>
 
             <div className="space-y-2">
@@ -148,10 +237,13 @@ export function RecruiterSignup() {
                   placeholder="you@company.com"
                   value={formData.email}
                   onChange={handleInputChange}
+                  onBlur={handleBlur}
                   required
                   className="pl-10"
+                  aria-invalid={!!errors.email}
                 />
               </div>
+              {errors.email && <ErrorText>{errors.email}</ErrorText>}
             </div>
 
             <div className="space-y-2">
@@ -165,9 +257,12 @@ export function RecruiterSignup() {
                   placeholder="+1 (555) 000-0000"
                   value={formData.phoneNumber}
                   onChange={handleInputChange}
+                  onBlur={handleBlur}
                   className="pl-10"
+                  aria-invalid={!!errors.phoneNumber}
                 />
               </div>
+              {errors.phoneNumber && <ErrorText>{errors.phoneNumber}</ErrorText>}
             </div>
 
             <div className="space-y-2">
@@ -201,10 +296,13 @@ export function RecruiterSignup() {
                     placeholder="Acme Inc."
                     value={formData.companyName}
                     onChange={handleInputChange}
+                    onBlur={handleBlur}
                     required
                     className="pl-10"
+                    aria-invalid={!!errors.companyName}
                   />
                 </div>
+                {errors.companyName && <ErrorText>{errors.companyName}</ErrorText>}
               </div>
 
               <div className="space-y-2">
@@ -218,27 +316,37 @@ export function RecruiterSignup() {
                     placeholder="https://company.com"
                     value={formData.companyWebsite}
                     onChange={handleInputChange}
+                    onBlur={handleBlur}
                     className="pl-10"
+                    aria-invalid={!!errors.companyWebsite}
                   />
                 </div>
+                {errors.companyWebsite && <ErrorText>{errors.companyWebsite}</ErrorText>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="industry">Industry</Label>
-                <select
-                  id="industry"
-                  name="industry"
-                  value={formData.industry}
-                  onChange={handleInputChange}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="">Select industry</option>
-                  {INDUSTRIES.map((industry) => (
-                    <option key={industry} value={industry}>
-                      {industry.charAt(0).toUpperCase() + industry.slice(1)}
-                    </option>
-                  ))}
-                </select>
+                <Label htmlFor="industry">Industry *</Label>
+                <div className="relative">
+                  <Factory className="absolute left-3 top-3 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
+                  <select
+                    id="industry"
+                    name="industry"
+                    value={formData.industry}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    required
+                    className="flex h-10 w-full rounded-md border border-input bg-input hover:bg-input/80 pl-10 pr-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring transition-[color,box-shadow]"
+                    aria-invalid={!!errors.industry}
+                  >
+                    <option value="">Select industry</option>
+                    {INDUSTRIES.map((industry) => (
+                      <option key={industry} value={industry}>
+                        {industry.charAt(0).toUpperCase() + industry.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {errors.industry && <ErrorText>{errors.industry}</ErrorText>}
               </div>
 
               <div className="space-y-2">
@@ -263,10 +371,7 @@ export function RecruiterSignup() {
 
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating Account...
-              </>
+              <TypingIndicator text="Creating your account" />
             ) : (
               "Create Organization Account"
             )}
@@ -285,7 +390,7 @@ export function RecruiterSignup() {
           </div>
         </form>
       ) : (
-        <form onSubmit={handleVerifyOtp} className="space-y-4">
+        <form onSubmit={handleVerifyOtp} className="space-y-4 animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
           <div className="space-y-3">
             <Label>Verification Code</Label>
             <OtpInput

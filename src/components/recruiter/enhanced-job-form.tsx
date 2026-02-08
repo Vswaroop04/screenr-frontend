@@ -13,8 +13,19 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { X, Plus, Sparkles, Lightbulb } from 'lucide-react'
+import {
+  X,
+  Plus,
+  Sparkles,
+  Lightbulb,
+  Link2,
+  Calendar,
+  Loader2,
+  Bot
+} from 'lucide-react'
 import { toast } from 'sonner'
+import { Checkbox } from '@/components/ui/checkbox'
+import { useGenerateQuestions } from '@/lib/screening-hooks'
 
 interface JobFormData {
   title: string
@@ -32,6 +43,22 @@ interface JobFormData {
   skills: string[]
   niceToHaveSkills: string[]
   department: string
+  // Application form fields
+  createApplicationForm: boolean
+  formExpiresAt: string
+  formRequireEmail: boolean
+  formRequirePhone: boolean
+  formRequireName: boolean
+  formAllowAnonymous: boolean
+  formCustomMessage: string
+  formAcknowledgmentSubject: string
+  formAcknowledgmentBody: string
+  formMaxSubmissions: string
+  formAutoExpire: boolean
+  formQuestions: Array<{
+    question: string
+    weight: 'critical' | 'important' | 'nice_to_have'
+  }>
 }
 
 const COMMON_JOB_TITLES = [
@@ -228,7 +255,21 @@ export function EnhancedJobForm ({
     requirements: initialData?.requirements || [],
     skills: initialData?.skills || [],
     niceToHaveSkills: initialData?.niceToHaveSkills || [],
-    department: initialData?.department || ''
+    department: initialData?.department || '',
+    // Application form defaults
+    createApplicationForm: false,
+    formExpiresAt: '',
+    formRequireEmail: true,
+    formRequirePhone: false,
+    formRequireName: true,
+    formAllowAnonymous: false,
+    formCustomMessage: '',
+    formAcknowledgmentSubject: 'Thank you for your application',
+    formAcknowledgmentBody:
+      'We have received your application and will review it shortly. We will be in touch if your profile matches our requirements.',
+    formMaxSubmissions: '',
+    formAutoExpire: false,
+    formQuestions: []
   })
 
   const [currentResponsibility, setCurrentResponsibility] = useState('')
@@ -240,6 +281,36 @@ export function EnhancedJobForm ({
   const [showTitleDropdown, setShowTitleDropdown] = useState(false)
   const [showDepartmentDropdown, setShowDepartmentDropdown] = useState(false)
   const [showSkillDropdown, setShowSkillDropdown] = useState(false)
+  const [currentFormQuestion, setCurrentFormQuestion] = useState('')
+  const [currentQuestionWeight, setCurrentQuestionWeight] = useState<
+    'critical' | 'important' | 'nice_to_have'
+  >('important')
+  const generateQuestionsMutation = useGenerateQuestions()
+
+  const handleGenerateAIQuestions = async () => {
+    const description = formData.description?.trim()
+    if (!description || description.length < 50) {
+      toast.error(
+        'Please add a job description (at least 50 characters) to generate AI questions'
+      )
+      return
+    }
+
+    try {
+      const result = await generateQuestionsMutation.mutateAsync(description)
+      const newQuestions = result.questions.map(q => ({
+        question: q.question,
+        weight: q.weight
+      }))
+      setFormData({
+        ...formData,
+        formQuestions: [...formData.formQuestions, ...newQuestions]
+      })
+      toast.success(`Generated ${result.questions.length} questions using AI`)
+    } catch {
+      toast.error('Failed to generate questions')
+    }
+  }
 
   const getSkillRecommendations = (): string[] => {
     const title = formData.title.toLowerCase()
@@ -825,6 +896,479 @@ export function EnhancedJobForm ({
             </Badge>
           ))}
         </div>
+      </div>
+
+      {/* AI Screening Questions */}
+      <div className='space-y-3 p-4 border rounded-lg bg-muted/30'>
+        <div className='flex items-center justify-between'>
+          <div>
+            <Label className='text-base font-semibold flex items-center gap-2'>
+              <Bot className='h-5 w-5' />
+              Screening Questions
+            </Label>
+            <p className='text-sm text-muted-foreground mt-1'>
+              Add questions for AI screening and candidate application forms
+            </p>
+          </div>
+          <Button
+            type='button'
+            variant='outline'
+            size='sm'
+            onClick={handleGenerateAIQuestions}
+            disabled={generateQuestionsMutation.isPending}
+            className='shrink-0'
+          >
+            {generateQuestionsMutation.isPending ? (
+              <Loader2 className='h-4 w-4 mr-2 animate-spin' />
+            ) : (
+              <Sparkles className='h-4 w-4 mr-2' />
+            )}
+            Generate with AI
+          </Button>
+        </div>
+        <div className='flex gap-2'>
+          <div className='flex-1'>
+            <Input
+              placeholder='Enter a screening question...'
+              value={currentFormQuestion}
+              onChange={e => setCurrentFormQuestion(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && currentFormQuestion.trim()) {
+                  e.preventDefault()
+                  setFormData({
+                    ...formData,
+                    formQuestions: [
+                      ...formData.formQuestions,
+                      {
+                        question: currentFormQuestion.trim(),
+                        weight: currentQuestionWeight
+                      }
+                    ]
+                  })
+                  setCurrentFormQuestion('')
+                  toast.success('Question added')
+                }
+              }}
+            />
+          </div>
+          <Select
+            value={currentQuestionWeight}
+            onValueChange={value =>
+              setCurrentQuestionWeight(
+                value as 'critical' | 'important' | 'nice_to_have'
+              )
+            }
+          >
+            <SelectTrigger className='w-[140px]'>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value='critical'>Critical</SelectItem>
+              <SelectItem value='important'>Important</SelectItem>
+              <SelectItem value='nice_to_have'>Nice to Have</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            type='button'
+            size='sm'
+            onClick={() => {
+              if (currentFormQuestion.trim()) {
+                setFormData({
+                  ...formData,
+                  formQuestions: [
+                    ...formData.formQuestions,
+                    {
+                      question: currentFormQuestion.trim(),
+                      weight: currentQuestionWeight
+                    }
+                  ]
+                })
+                setCurrentFormQuestion('')
+                toast.success('Question added')
+              }
+            }}
+          >
+            <Plus className='h-4 w-4' />
+          </Button>
+        </div>
+        <div className='space-y-2'>
+          {formData.formQuestions.map((item, index) => (
+            <div
+              key={index}
+              className='flex items-start gap-2 p-3 bg-background border rounded-lg'
+            >
+              <div className='flex-1'>
+                <p className='text-sm'>{item.question}</p>
+                <Badge variant='secondary' className='text-xs mt-2'>
+                  {item.weight === 'critical'
+                    ? '🔴 Critical'
+                    : item.weight === 'important'
+                    ? '🟡 Important'
+                    : '🟢 Nice to Have'}
+                </Badge>
+              </div>
+              <Button
+                type='button'
+                variant='ghost'
+                size='sm'
+                onClick={() => {
+                  setFormData({
+                    ...formData,
+                    formQuestions: formData.formQuestions.filter(
+                      (_, i) => i !== index
+                    )
+                  })
+                }}
+              >
+                <X className='h-4 w-4' />
+              </Button>
+            </div>
+          ))}
+          {formData.formQuestions.length === 0 && (
+            <p className='text-sm text-muted-foreground italic text-center py-4'>
+              No screening questions yet. Add manually or generate with AI.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Application Form Section */}
+      <div className='space-y-4 p-4 border rounded-lg bg-muted/30'>
+        <div className='flex items-center gap-3'>
+          <Checkbox
+            id='createApplicationForm'
+            checked={formData.createApplicationForm}
+            onCheckedChange={checked =>
+              setFormData({ ...formData, createApplicationForm: !!checked })
+            }
+          />
+          <div className='flex-1'>
+            <Label
+              htmlFor='createApplicationForm'
+              className='flex items-center gap-2 text-base font-semibold cursor-pointer'
+            >
+              <Link2 className='h-5 w-5' />
+              Create Application Form Link
+            </Label>
+            <p className='text-sm text-muted-foreground mt-1'>
+              Generate a shareable link for candidates to apply with their
+              resume and answer the screening questions above
+            </p>
+          </div>
+        </div>
+
+        {formData.createApplicationForm && (
+          <div className='space-y-4 pl-8'>
+            {/* Form Settings */}
+            <div className='space-y-4'>
+              <h4 className='font-semibold text-sm'>Form Settings</h4>
+
+              <div className='grid gap-4 md:grid-cols-2'>
+                <div className='space-y-2'>
+                  <Label
+                    htmlFor='formExpiresAt'
+                    className='flex items-center gap-2'
+                  >
+                    <Calendar className='h-4 w-4' />
+                    Form Expires On
+                  </Label>
+                  <Input
+                    id='formExpiresAt'
+                    type='date'
+                    value={formData.formExpiresAt}
+                    onChange={e =>
+                      setFormData({
+                        ...formData,
+                        formExpiresAt: e.target.value
+                      })
+                    }
+                  />
+                  <p className='text-xs text-muted-foreground'>
+                    Leave empty for no expiration
+                  </p>
+                </div>
+                <div className='space-y-2'>
+                  <Label htmlFor='formMaxSubmissions'>Max Submissions</Label>
+                  <Input
+                    id='formMaxSubmissions'
+                    type='number'
+                    placeholder='e.g., 100'
+                    value={formData.formMaxSubmissions}
+                    onChange={e =>
+                      setFormData({
+                        ...formData,
+                        formMaxSubmissions: e.target.value
+                      })
+                    }
+                  />
+                  <p className='text-xs text-muted-foreground'>
+                    Leave empty for unlimited
+                  </p>
+                </div>
+              </div>
+
+              <div className='space-y-3'>
+                <Label className='text-sm font-medium'>
+                  Required Information
+                </Label>
+                <div className='space-y-2'>
+                  <div className='flex items-center gap-2'>
+                    <Checkbox
+                      id='formRequireEmail'
+                      checked={formData.formRequireEmail}
+                      onCheckedChange={checked =>
+                        setFormData({
+                          ...formData,
+                          formRequireEmail: !!checked
+                        })
+                      }
+                    />
+                    <Label
+                      htmlFor='formRequireEmail'
+                      className='text-sm cursor-pointer'
+                    >
+                      Require Email Address
+                    </Label>
+                  </div>
+                  <div className='flex items-center gap-2'>
+                    <Checkbox
+                      id='formRequirePhone'
+                      checked={formData.formRequirePhone}
+                      onCheckedChange={checked =>
+                        setFormData({
+                          ...formData,
+                          formRequirePhone: !!checked
+                        })
+                      }
+                    />
+                    <Label
+                      htmlFor='formRequirePhone'
+                      className='text-sm cursor-pointer'
+                    >
+                      Require Phone Number
+                    </Label>
+                  </div>
+                  <div className='flex items-center gap-2'>
+                    <Checkbox
+                      id='formRequireName'
+                      checked={formData.formRequireName}
+                      onCheckedChange={checked =>
+                        setFormData({ ...formData, formRequireName: !!checked })
+                      }
+                    />
+                    <Label
+                      htmlFor='formRequireName'
+                      className='text-sm cursor-pointer'
+                    >
+                      Require Full Name
+                    </Label>
+                  </div>
+                  <div className='flex items-center gap-2'>
+                    <Checkbox
+                      id='formAutoExpire'
+                      checked={formData.formAutoExpire}
+                      onCheckedChange={checked =>
+                        setFormData({ ...formData, formAutoExpire: !!checked })
+                      }
+                    />
+                    <Label
+                      htmlFor='formAutoExpire'
+                      className='text-sm cursor-pointer'
+                    >
+                      Auto-close when max submissions reached
+                    </Label>
+                  </div>
+                </div>
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='formCustomMessage'>
+                  Welcome Message (Optional)
+                </Label>
+                <Textarea
+                  id='formCustomMessage'
+                  placeholder='A brief message to candidates about this position...'
+                  className='min-h-[80px]'
+                  value={formData.formCustomMessage}
+                  onChange={e =>
+                    setFormData({
+                      ...formData,
+                      formCustomMessage: e.target.value
+                    })
+                  }
+                />
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='formAcknowledgmentSubject'>
+                  Acknowledgment Email Subject
+                </Label>
+                <Input
+                  id='formAcknowledgmentSubject'
+                  placeholder='Thank you for your application'
+                  value={formData.formAcknowledgmentSubject}
+                  onChange={e =>
+                    setFormData({
+                      ...formData,
+                      formAcknowledgmentSubject: e.target.value
+                    })
+                  }
+                />
+              </div>
+
+              <div className='space-y-2'>
+                <Label htmlFor='formAcknowledgmentBody'>
+                  Acknowledgment Email Body
+                </Label>
+                <Textarea
+                  id='formAcknowledgmentBody'
+                  placeholder='Message to send to candidates after they submit...'
+                  className='min-h-[80px]'
+                  value={formData.formAcknowledgmentBody}
+                  onChange={e =>
+                    setFormData({
+                      ...formData,
+                      formAcknowledgmentBody: e.target.value
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Custom Questions */}
+            <div className='space-y-3'>
+              <div className='flex items-center justify-between'>
+                <div>
+                  <Label className='text-sm font-medium'>
+                    Custom Screening Questions
+                  </Label>
+                  <p className='text-xs text-muted-foreground'>
+                    Add questions to gather more information from candidates
+                  </p>
+                </div>
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  onClick={handleGenerateAIQuestions}
+                  disabled={generateQuestionsMutation.isPending}
+                  className='shrink-0'
+                >
+                  {generateQuestionsMutation.isPending ? (
+                    <Loader2 className='h-4 w-4 mr-2 animate-spin' />
+                  ) : (
+                    <Bot className='h-4 w-4 mr-2' />
+                  )}
+                  Generate with AI
+                </Button>
+              </div>
+              <div className='flex gap-2'>
+                <div className='flex-1'>
+                  <Input
+                    placeholder='Enter a screening question...'
+                    value={currentFormQuestion}
+                    onChange={e => setCurrentFormQuestion(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && currentFormQuestion.trim()) {
+                        e.preventDefault()
+                        setFormData({
+                          ...formData,
+                          formQuestions: [
+                            ...formData.formQuestions,
+                            {
+                              question: currentFormQuestion.trim(),
+                              weight: currentQuestionWeight
+                            }
+                          ]
+                        })
+                        setCurrentFormQuestion('')
+                        toast.success('Question added')
+                      }
+                    }}
+                  />
+                </div>
+                <Select
+                  value={currentQuestionWeight}
+                  onValueChange={value =>
+                    setCurrentQuestionWeight(
+                      value as 'critical' | 'important' | 'nice_to_have'
+                    )
+                  }
+                >
+                  <SelectTrigger className='w-[140px]'>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value='critical'>Critical</SelectItem>
+                    <SelectItem value='important'>Important</SelectItem>
+                    <SelectItem value='nice_to_have'>Nice to Have</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  type='button'
+                  size='sm'
+                  onClick={() => {
+                    if (currentFormQuestion.trim()) {
+                      setFormData({
+                        ...formData,
+                        formQuestions: [
+                          ...formData.formQuestions,
+                          {
+                            question: currentFormQuestion.trim(),
+                            weight: currentQuestionWeight
+                          }
+                        ]
+                      })
+                      setCurrentFormQuestion('')
+                      toast.success('Question added')
+                    }
+                  }}
+                >
+                  <Plus className='h-4 w-4' />
+                </Button>
+              </div>
+              <div className='space-y-2'>
+                {formData.formQuestions.map((item, index) => (
+                  <div
+                    key={index}
+                    className='flex items-start gap-2 p-3 bg-background border rounded-lg'
+                  >
+                    <div className='flex-1'>
+                      <p className='text-sm'>{item.question}</p>
+                      <Badge variant='secondary' className='text-xs mt-2'>
+                        {item.weight === 'critical'
+                          ? '🔴 Critical'
+                          : item.weight === 'important'
+                          ? '🟡 Important'
+                          : '🟢 Nice to Have'}
+                      </Badge>
+                    </div>
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='sm'
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          formQuestions: formData.formQuestions.filter(
+                            (_, i) => i !== index
+                          )
+                        })
+                      }}
+                    >
+                      <X className='h-4 w-4' />
+                    </Button>
+                  </div>
+                ))}
+                {formData.formQuestions.length === 0 && (
+                  <p className='text-sm text-muted-foreground italic text-center py-4'>
+                    No custom questions added yet
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Actions */}

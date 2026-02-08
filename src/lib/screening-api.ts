@@ -67,6 +67,12 @@ export interface Job {
   resumeCount: number
   processedCount: number
   createdAt: string
+  // Application form fields
+  hasApplicationForm?: boolean
+  formLink?: string
+  formStatus?: 'open' | 'closed' | 'expired'
+  formExpiresAt?: string
+  formSubmissionCount?: number
 }
 
 export interface JobMetadata {
@@ -91,6 +97,24 @@ export interface CreateJobRequest {
   jobMetadata?: JobMetadata
   scoringWeights?: ScoringWeights
   customPreferences?: CustomPreferences
+  // Application form creation
+  createApplicationForm?: boolean
+  formQuestions?: Array<{
+    question: string
+    weight: 'critical' | 'important' | 'nice_to_have'
+  }>
+  formSettings?: {
+    requireEmail?: boolean
+    requirePhone?: boolean
+    requireName?: boolean
+    allowAnonymous?: boolean
+    customMessage?: string
+    acknowledgmentEmailSubject?: string
+    acknowledgmentEmailBody?: string
+    maxSubmissions?: number
+    autoExpireOnMaxSubmissions?: boolean
+  }
+  formExpiresAt?: Date | string
 }
 
 export interface UploadUrlResponse {
@@ -141,6 +165,13 @@ export interface Candidate {
   resumeQualityScore?: ResumeQualityScore
   scoreConfidence?: ScoreConfidence
   trustBadges?: string[]
+  // Verix engagement
+  verixStatus?: string
+  verixConversationId?: string
+  verixPreScore?: number
+  verixPostScore?: number
+  verixPreTrustScore?: number
+  verixPostTrustScore?: number
 }
 
 export interface JobCandidatesResponse {
@@ -971,7 +1002,64 @@ export const adminAPI = {
     if (params?.limit) searchParams.set('limit', params.limit.toString())
     if (params?.offset) searchParams.set('offset', params.offset.toString())
     const query = searchParams.toString()
-    return fetchAPI(`/admin/users/${userId}/candidates${query ? `?${query}` : ''}`)
+    return fetchAPI(
+      `/admin/users/${userId}/candidates${query ? `?${query}` : ''}`
+    )
+  },
+
+  // Get credit consumption overview
+  getCreditConsumption: (params?: {
+    planType?: string
+    sortBy?: 'resumes' | 'jobs' | 'analyses' | 'lifetime'
+    limit?: number
+    offset?: number
+  }): Promise<{
+    users: Array<{
+      userId: string
+      email: string
+      fullName?: string
+      role: string
+      planType: string
+      resumesUploadedThisMonth: number
+      resumesLimitThisMonth: number
+      resumesPercentageUsed: number
+      jobsCreatedThisMonth: number
+      activeJobsCount: number
+      activeJobsLimit: number
+      analysesThisMonth: number
+      analysesLimitThisMonth: number
+      analysesPercentageUsed: number
+      lifetimeResumesUploaded: number
+      lifetimeJobsCreated: number
+      lifetimeAnalyses: number
+      isActive: boolean
+      currentPeriodStart: string
+      lastLoginAt?: string
+    }>
+    summary: {
+      totalUsersTracked: number
+      totalResumesThisMonth: number
+      totalJobsThisMonth: number
+      totalAnalysesThisMonth: number
+      totalLifetimeResumes: number
+      totalLifetimeJobs: number
+      totalLifetimeAnalyses: number
+      byPlan: {
+        free: { users: number; resumesUsed: number; analysesUsed: number }
+        starter: { users: number; resumesUsed: number; analysesUsed: number }
+        pro: { users: number; resumesUsed: number; analysesUsed: number }
+        enterprise: { users: number; resumesUsed: number; analysesUsed: number }
+      }
+    }
+    total: number
+  }> => {
+    const searchParams = new URLSearchParams()
+    if (params?.planType) searchParams.set('planType', params.planType)
+    if (params?.sortBy) searchParams.set('sortBy', params.sortBy)
+    if (params?.limit) searchParams.set('limit', params.limit.toString())
+    if (params?.offset) searchParams.set('offset', params.offset.toString())
+    const query = searchParams.toString()
+    return fetchAPI(`/admin/credit-consumption${query ? `?${query}` : ''}`)
   }
 }
 
@@ -1107,11 +1195,15 @@ export const verixRecruiterAPI = {
   getConversations: (jobId: string): Promise<VerixConversationsResponse> =>
     fetchAPI(`/jobs/${jobId}/verix/conversations`),
 
-  getConversationDetail: (conversationId: string): Promise<VerixConversationDetail> =>
+  getConversationDetail: (
+    conversationId: string
+  ): Promise<VerixConversationDetail> =>
     fetchAPI(`/verix/conversations/${conversationId}`),
 
-  retryConversation: (conversationId: string): Promise<{ success: boolean; message: string }> =>
-    fetchAPI(`/verix/conversations/${conversationId}/retry`, { method: 'POST' }),
+  retryConversation: (
+    conversationId: string
+  ): Promise<{ success: boolean; message: string }> =>
+    fetchAPI(`/verix/conversations/${conversationId}/retry`, { method: 'POST' })
 }
 
 // ============================================================================
@@ -1144,12 +1236,16 @@ export const verixPublicAPI = {
 
   submitAnswers: (
     token: string,
-    answers: Array<{ questionId: string; answer: string; responseTimeSeconds?: number }>
+    answers: Array<{
+      questionId: string
+      answer: string
+      responseTimeSeconds?: number
+    }>
   ): Promise<{ success: boolean; message: string }> =>
     fetchPublicAPI(`/verix/${token}/submit`, {
       method: 'POST',
       body: JSON.stringify({ token, answers })
-    }),
+    })
 }
 
 // ============================================================================
@@ -1171,11 +1267,15 @@ export interface CreateApplicationFormRequest {
     weight: 'critical' | 'important' | 'nice_to_have'
   }>
   formSettings?: ApplicationFormSettings
+  expiresAt?: string
 }
 
 export interface ApplicationFormResponse {
   hasForm: boolean
   formLink?: string
+  formStatus?: 'open' | 'closed' | 'expired'
+  expiresAt?: string
+  submissionCount?: number
   questions?: Array<{
     question: string
     weight: 'critical' | 'important' | 'nice_to_have'

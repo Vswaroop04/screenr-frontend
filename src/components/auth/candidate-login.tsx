@@ -11,6 +11,8 @@ import { toast } from 'sonner'
 import { Loader2, Mail, User, Briefcase } from 'lucide-react'
 import Link from 'next/link'
 import { OtpInput } from '@/components/ui/otp-input'
+import { ErrorText } from '@/components/ui/error-text'
+import { validateEmail, validateRequired } from '@/lib/validation'
 
 type AuthMode = 'login' | 'signup'
 type Step = 'form' | 'otp'
@@ -23,11 +25,28 @@ export function CandidateLogin () {
   const [step, setStep] = useState<Step>('form')
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
+  const [emailError, setEmailError] = useState('')
+  const [fullNameError, setFullNameError] = useState('')
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Validate form before sending OTP
+    const emailErr = validateEmail(email)
+    const fullNameErr = mode === 'signup' ? validateRequired(fullName, 'Full name') : null
+
+    if (emailErr) {
+      setEmailError(emailErr)
+      return
+    }
+
+    if (fullNameErr) {
+      setFullNameError(fullNameErr)
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -80,6 +99,8 @@ export function CandidateLogin () {
     setMode(newMode)
     setStep('form')
     setOtp('')
+    setEmailError('')
+    setFullNameError('')
   }
 
   return (
@@ -109,11 +130,20 @@ export function CandidateLogin () {
                   type='text'
                   placeholder='John Doe'
                   value={fullName}
-                  onChange={e => setFullName(e.target.value)}
+                  onChange={e => {
+                    setFullName(e.target.value)
+                    if (fullNameError) setFullNameError('')
+                  }}
+                  onBlur={e => {
+                    const error = validateRequired(e.target.value, 'Full name')
+                    setFullNameError(error || '')
+                  }}
                   required
                   className='pl-10'
+                  aria-invalid={!!fullNameError}
                 />
               </div>
+              {fullNameError && <ErrorText>{fullNameError}</ErrorText>}
             </div>
           )}
 
@@ -126,14 +156,27 @@ export function CandidateLogin () {
                 type='email'
                 placeholder='you@example.com'
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => {
+                  setEmail(e.target.value)
+                  if (emailError) setEmailError('')
+                }}
+                onBlur={e => {
+                  const error = validateEmail(e.target.value)
+                  setEmailError(error || '')
+                }}
                 required
                 className='pl-10'
+                aria-invalid={!!emailError}
               />
             </div>
+            {emailError && <ErrorText>{emailError}</ErrorText>}
           </div>
 
-          <Button type='submit' className='w-full' disabled={loading}>
+          <Button
+            type='submit'
+            className='w-full'
+            disabled={loading || !email || !!emailError || (mode === 'signup' && (!fullName || !!fullNameError))}
+          >
             {loading ? (
               <>
                 <Loader2 className='mr-2 h-4 w-4 animate-spin' />

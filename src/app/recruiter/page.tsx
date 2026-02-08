@@ -10,7 +10,10 @@ import {
   ArrowRight,
   Search,
   Edit,
-  Trash2
+  Trash2,
+  Link2,
+  Copy,
+  CheckCircle2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -47,6 +50,7 @@ import Loader from '@/components/shared/loader'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { RecruiterLayout } from '@/components/layout/recruiter-layout'
 import { EnhancedJobForm } from '@/components/recruiter/enhanced-job-form'
+import { ShareJobLinkDialog } from '@/components/recruiter/share-job-link-dialog'
 
 function RecruiterDashboardContent () {
   const { data: jobsData, isLoading } = useJobs()
@@ -57,6 +61,9 @@ function RecruiterDashboardContent () {
   const [deletingJobId, setDeletingJobId] = useState<string | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [copiedJobId, setCopiedJobId] = useState<string | null>(null)
+  const [shareJobDialogOpen, setShareJobDialogOpen] = useState(false)
+  const [sharingJob, setSharingJob] = useState<Job | null>(null)
 
   const handleEditJob = (job: Job) => {
     setEditingJob(job)
@@ -105,10 +112,24 @@ function RecruiterDashboardContent () {
     }
   }
 
+  const handleCopyFormLink = (job: Job) => {
+    if (!job.formLink) return
+
+    navigator.clipboard.writeText(job.formLink)
+    setCopiedJobId(job.id)
+    toast.success('Application link copied to clipboard!')
+    setTimeout(() => setCopiedJobId(null), 2000)
+  }
+
+  const handleOpenShareDialog = (job: Job) => {
+    setSharingJob(job)
+    setShareJobDialogOpen(true)
+  }
+
   const handleCreateJob = async (formData: any) => {
     try {
       // Transform enhanced form data to match API expectations
-      const jobData = {
+      const jobData: any = {
         title: formData.title,
         company: formData.company,
         location: formData.location,
@@ -122,13 +143,41 @@ function RecruiterDashboardContent () {
           employmentType: formData.employmentType,
           experienceLevel: formData.experienceLevel,
           department: formData.department,
-          salaryMin: formData.salaryMin ? parseInt(formData.salaryMin) : undefined,
-          salaryMax: formData.salaryMax ? parseInt(formData.salaryMax) : undefined,
+          salaryMin: formData.salaryMin
+            ? parseInt(formData.salaryMin)
+            : undefined,
+          salaryMax: formData.salaryMax
+            ? parseInt(formData.salaryMax)
+            : undefined,
           salaryCurrency: formData.salaryCurrency,
           responsibilities: formData.responsibilities || [],
           requirements: formData.requirements || []
         }
       }
+
+      // Add application form data if enabled
+      if (formData.createApplicationForm) {
+        jobData.createApplicationForm = true
+        jobData.formQuestions = formData.formQuestions || []
+        jobData.formSettings = {
+          requireEmail: formData.formRequireEmail,
+          requirePhone: formData.formRequirePhone,
+          requireName: formData.formRequireName,
+          allowAnonymous: formData.formAllowAnonymous,
+          customMessage: formData.formCustomMessage || undefined,
+          acknowledgmentEmailSubject:
+            formData.formAcknowledgmentSubject || undefined,
+          acknowledgmentEmailBody: formData.formAcknowledgmentBody || undefined,
+          maxSubmissions: formData.formMaxSubmissions
+            ? parseInt(formData.formMaxSubmissions)
+            : undefined,
+          autoExpireOnMaxSubmissions: formData.formAutoExpire
+        }
+        if (formData.formExpiresAt) {
+          jobData.formExpiresAt = new Date(formData.formExpiresAt).toISOString()
+        }
+      }
+
       await createJob.mutateAsync(jobData)
       toast.success('Job created successfully!')
       setIsDialogOpen(false)
@@ -137,7 +186,11 @@ function RecruiterDashboardContent () {
       // Extract error message from API response
       const errorMessage = error?.message || 'Failed to create job'
       // Check for plan limit errors
-      if (errorMessage.includes('limit') || errorMessage.includes('upgrade') || errorMessage.includes('plan')) {
+      if (
+        errorMessage.includes('limit') ||
+        errorMessage.includes('upgrade') ||
+        errorMessage.includes('plan')
+      ) {
         toast.error(errorMessage, {
           description: 'Upgrade your plan to create more jobs',
           duration: 5000
@@ -187,10 +240,10 @@ function RecruiterDashboardContent () {
   return (
     <div className='container mx-auto py-8 px-4'>
       {/* Header */}
-      <div className='flex items-center justify-between mb-6'>
+      <div className='flex items-center justify-between mb-8'>
         <div>
-          <h1 className='text-3xl font-bold'>Jobs</h1>
-          <p className='text-muted-foreground'>
+          <h1 className='text-3xl font-bold tracking-tight'>Jobs</h1>
+          <p className='text-muted-foreground mt-1'>
             Create jobs and screen candidates with AI
           </p>
         </div>
@@ -252,14 +305,18 @@ function RecruiterDashboardContent () {
           {jobs.map(job => (
             <Card
               key={job.id}
-              className='hover:border-primary transition-colors cursor-pointer'
+              className='hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer group'
             >
-              <CardHeader>
+              <CardHeader className='pb-3'>
                 <div className='flex items-start justify-between'>
                   <div>
-                    <CardTitle className='text-lg'>{job.title}</CardTitle>
+                    <CardTitle className='text-lg tracking-tight group-hover:text-primary transition-colors'>
+                      {job.title}
+                    </CardTitle>
                     {job.company && (
-                      <CardDescription>{job.company}</CardDescription>
+                      <CardDescription className='mt-0.5'>
+                        {job.company}
+                      </CardDescription>
                     )}
                   </div>
                   {getStatusBadge(job.status)}
@@ -273,16 +330,75 @@ function RecruiterDashboardContent () {
                 )}
 
                 {/* Stats */}
-                <div className='flex gap-4'>
-                  <div className='flex items-center gap-1 text-sm'>
-                    <Users className='h-4 w-4 text-muted-foreground' />
+                <div className='flex gap-4 flex-wrap'>
+                  <div className='flex items-center gap-1.5 text-sm'>
+                    <div className='p-1 rounded bg-blue-500/10'>
+                      <Users className='h-3 w-3 text-blue-500' />
+                    </div>
                     <span>{job.resumeCount} resumes</span>
                   </div>
-                  <div className='flex items-center gap-1 text-sm'>
-                    <Clock className='h-4 w-4 text-muted-foreground' />
+                  <div className='flex items-center gap-1.5 text-sm'>
+                    <div className='p-1 rounded bg-emerald-500/10'>
+                      <Clock className='h-3 w-3 text-emerald-500' />
+                    </div>
                     <span>{job.processedCount} processed</span>
                   </div>
+                  {job.hasApplicationForm && (
+                    <div className='flex items-center gap-1.5 text-sm'>
+                      <div className='p-1 rounded bg-violet-500/10'>
+                        <Link2 className='h-3 w-3 text-violet-500' />
+                      </div>
+                      <span>{job.formSubmissionCount || 0} submissions</span>
+                    </div>
+                  )}
                 </div>
+
+                {/* Application Form Status */}
+                {job.hasApplicationForm && (
+                  <div className='flex items-center gap-2 p-2 bg-primary/10 rounded-md'>
+                    <Link2 className='h-4 w-4 text-primary' />
+                    <div className='flex-1 min-w-0'>
+                      <p className='text-xs font-medium text-primary'>
+                        Application Form Active
+                      </p>
+                      {job.formExpiresAt && (
+                        <p className='text-xs text-muted-foreground'>
+                          Expires:{' '}
+                          {new Date(job.formExpiresAt).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    <div className='flex gap-1'>
+                      <Button
+                        variant='ghost'
+                        size='sm'
+                        className='h-8 px-2'
+                        onClick={e => {
+                          e.stopPropagation()
+                          handleCopyFormLink(job)
+                        }}
+                        title='Copy application link'
+                      >
+                        {copiedJobId === job.id ? (
+                          <CheckCircle2 className='h-4 w-4 text-green-500' />
+                        ) : (
+                          <Copy className='h-4 w-4' />
+                        )}
+                      </Button>
+                      <Button
+                        variant='default'
+                        size='sm'
+                        className='h-8 text-xs'
+                        onClick={e => {
+                          e.stopPropagation()
+                          handleOpenShareDialog(job)
+                        }}
+                      >
+                        Share
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Skills */}
                 {job.requiredSkills && job.requiredSkills.length > 0 && (
@@ -300,11 +416,15 @@ function RecruiterDashboardContent () {
                   </div>
                 )}
 
-                <div className='flex gap-2'>
-                  <Button asChild variant='outline' className='flex-1'>
+                <div className='flex gap-2 pt-1'>
+                  <Button
+                    asChild
+                    variant='outline'
+                    className='flex-1 group/btn'
+                  >
                     <Link href={`/recruiter/${job.id}`}>
                       View Candidates
-                      <ArrowRight className='ml-2 h-4 w-4' />
+                      <ArrowRight className='ml-2 h-4 w-4 group-hover/btn:translate-x-0.5 transition-transform' />
                     </Link>
                   </Button>
                   <Button
@@ -396,6 +516,13 @@ function RecruiterDashboardContent () {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Share Job Link Dialog */}
+      <ShareJobLinkDialog
+        job={sharingJob}
+        open={shareJobDialogOpen}
+        onOpenChange={setShareJobDialogOpen}
+      />
     </div>
   )
 }

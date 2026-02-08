@@ -48,6 +48,7 @@ import {
 import { FileUpload } from '@/components/screening/file-upload'
 import { toast } from 'sonner'
 import Loader from '@/components/shared/loader'
+import { TypingIndicator } from '@/components/ui/typing-indicator'
 import type { CandidateResumeItem, CandidateAnalysisItem } from '@/lib/screening-api'
 
 function getStatusBadge (status: string) {
@@ -151,7 +152,7 @@ function AnalysisCard ({ analysis }: { analysis: CandidateAnalysisItem }) {
   const [expanded, setExpanded] = useState(true)
 
   return (
-    <div className='border rounded-xl p-5 space-y-4 bg-card'>
+    <div className='border rounded-xl p-5 space-y-4 bg-card animate-in fade-in-0 slide-in-from-bottom-4 duration-500'>
       {/* Header */}
       <div className='flex items-start justify-between'>
         <div className='space-y-1'>
@@ -303,7 +304,12 @@ function AnalyzeDialog ({
           </div>
 
           <div className='space-y-2'>
-            <label className='text-sm font-medium'>Job Description</label>
+            <div className='flex items-center justify-between'>
+              <label className='text-sm font-medium'>Job Description *</label>
+              <span className='text-xs text-muted-foreground'>
+                {jobDescription.length} characters
+              </span>
+            </div>
             <Textarea
               placeholder='Paste the full job description here...
 
@@ -317,9 +323,12 @@ Example:
               onChange={e => setJobDescription(e.target.value)}
               className='min-h-[200px] resize-none'
             />
-            <p className='text-xs text-muted-foreground'>
-              Tip: The more detailed the job description, the better the analysis
-            </p>
+            <div className='flex items-start gap-2'>
+              <Lightbulb className='w-4 h-4 text-primary flex-shrink-0 mt-0.5' />
+              <p className='text-xs text-muted-foreground'>
+                Tip: The more detailed the job description, the better the AI analysis
+              </p>
+            </div>
           </div>
 
           <div className='flex justify-end gap-2'>
@@ -331,13 +340,10 @@ Example:
               disabled={analyzeResume.isPending || !jobDescription.trim()}
             >
               {analyzeResume.isPending ? (
-                <>
-                  <Loader className='w-4 h-4 mr-2' />
-                  Analyzing...
-                </>
+                <TypingIndicator text="Analyzing with AI" />
               ) : (
                 <>
-                  <Play className='w-4 h-4 mr-2' />
+                  <Sparkles className='w-4 h-4 mr-2' />
                   Analyze Match
                 </>
               )}

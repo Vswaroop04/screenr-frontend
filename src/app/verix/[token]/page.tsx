@@ -37,7 +37,9 @@ export default function VerixPage ({ params }: PageProps) {
         }
         setStartTimes(times)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load questions')
+        setError(
+          err instanceof Error ? err.message : 'Failed to load questions'
+        )
       } finally {
         setLoading(false)
       }
@@ -67,7 +69,9 @@ export default function VerixPage ({ params }: PageProps) {
         .map(q => ({
           questionId: q.id,
           answer: answers[q.id].trim(),
-          responseTimeSeconds: Math.round((now - (startTimes[q.id] || pageLoadTime.current)) / 1000)
+          responseTimeSeconds: Math.round(
+            (now - (startTimes[q.id] || pageLoadTime.current)) / 1000
+          )
         }))
 
       await verixPublicAPI.submitAnswers(token, formattedAnswers)
@@ -87,15 +91,6 @@ export default function VerixPage ({ params }: PageProps) {
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
     if (hours > 0) return `${hours}h ${minutes}m remaining`
     return `${minutes}m remaining`
-  }
-
-  const getTypeBadgeColor = (type: string) => {
-    switch (type) {
-      case 'technical': return 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-      case 'behavioral': return 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-      case 'project': return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-      default: return 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
-    }
   }
 
   // Loading state
@@ -142,8 +137,8 @@ export default function VerixPage ({ params }: PageProps) {
               Responses Submitted
             </h2>
             <p className='text-zinc-400'>
-              Thank you for your responses! Our team will review them as part of your application.
-              You can close this page now.
+              Thank you for your responses! Our team will review them as part of
+              your application. You can close this page now.
             </p>
           </CardContent>
         </Card>
@@ -167,7 +162,8 @@ export default function VerixPage ({ params }: PageProps) {
               </h1>
               {data.jobTitle && (
                 <p className='text-emerald-100 mt-1'>
-                  Application for <span className='font-medium'>{data.jobTitle}</span>
+                  Application for{' '}
+                  <span className='font-medium'>{data.jobTitle}</span>
                 </p>
               )}
             </div>
@@ -188,13 +184,24 @@ export default function VerixPage ({ params }: PageProps) {
           <CardContent className='pt-6'>
             <p className='text-zinc-300'>
               {data.candidateName ? (
-                <>Hi <span className='font-medium text-zinc-100'>{data.candidateName}</span>,</>
+                <>
+                  Hi{' '}
+                  <span className='font-medium text-zinc-100'>
+                    {data.candidateName}
+                  </span>
+                  ,
+                </>
               ) : (
                 <>Hi,</>
-              )}
-              {' '}we&apos;d like to learn more about your experience. Please answer the following
-              {' '}{data.questions.length} question{data.questions.length > 1 ? 's' : ''} to help us
-              better understand your qualifications.
+              )}{' '}
+              we&apos;d like to learn more about your experience. Please answer
+              the following {data.questions.length} question
+              {data.questions.length > 1 ? 's' : ''} to help us better
+              understand your qualifications.
+            </p>
+            <p className='text-zinc-500 text-sm mt-3'>
+              Your responses will be considered as part of your application
+              analysis.
             </p>
           </CardContent>
         </Card>
@@ -219,19 +226,16 @@ export default function VerixPage ({ params }: PageProps) {
                       {question.text}
                     </CardTitle>
                   </div>
-                  <div className='flex items-center gap-2 mt-2'>
-                    <Badge
-                      variant='outline'
-                      className={getTypeBadgeColor(question.type)}
-                    >
-                      {question.type}
-                    </Badge>
-                    {question.required && (
-                      <Badge variant='outline' className='bg-red-500/10 text-red-400 border-red-500/20'>
+                  {question.required && (
+                    <div className='mt-2'>
+                      <Badge
+                        variant='outline'
+                        className='bg-red-500/10 text-red-400 border-red-500/20'
+                      >
                         Required
                       </Badge>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
                   <Label htmlFor={question.id} className='sr-only'>
@@ -242,7 +246,10 @@ export default function VerixPage ({ params }: PageProps) {
                     placeholder='Type your answer here...'
                     value={answers[question.id] || ''}
                     onChange={e =>
-                      setAnswers(prev => ({ ...prev, [question.id]: e.target.value }))
+                      setAnswers(prev => ({
+                        ...prev,
+                        [question.id]: e.target.value
+                      }))
                     }
                     className='min-h-[120px] bg-zinc-950 border-zinc-700 text-zinc-100 placeholder:text-zinc-600 resize-y'
                   />

@@ -12,7 +12,7 @@ import {
   Shield,
   Settings,
   Download,
-  Lock,
+  BarChart3,
   Search,
   ArrowUpDown,
   LayoutGrid,
@@ -25,8 +25,13 @@ import {
   X,
   Eye,
   Mail,
-  MessageSquare,
-  FileText
+  Bot,
+  FileText,
+  Edit,
+  Save,
+  Loader2,
+  Link2,
+  Copy
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -70,12 +75,15 @@ import type {
   CustomPreferences,
   Candidate
 } from '@/lib/screening-api'
+import { recruiterAPI } from '@/lib/screening-api'
+import { Textarea } from '@/components/ui/textarea'
 import Loader from '@/components/shared/loader'
 import { ProtectedRoute } from '@/components/auth/protected-route'
 import { RecruiterLayout } from '@/components/layout/recruiter-layout'
 import { toast } from 'sonner'
 import { VerixInbox } from '@/components/recruiter/verix-inbox'
 import { ApplicationFormManager } from '@/components/recruiter/application-form-manager'
+import { JobAnalytics } from '@/components/screening/job-analytics'
 
 interface PageProps {
   params: Promise<{ jobId: string }>
@@ -140,6 +148,9 @@ function JobDetailContent ({ params }: PageProps) {
     'critical' | 'important' | 'nice_to_have'
   >('important')
   const [newPreference, setNewPreference] = useState('')
+  const [isEditingJD, setIsEditingJD] = useState(false)
+  const [editedDescription, setEditedDescription] = useState('')
+  const [isSavingJD, setIsSavingJD] = useState(false)
 
   const handleUpload = async (files: File[]) => {
     try {
@@ -343,30 +354,41 @@ function JobDetailContent ({ params }: PageProps) {
   return (
     <div className='container mx-auto py-8 px-4'>
       {/* Header */}
-      <div className='mb-6'>
+      <div className='mb-8'>
         <Link
           href='/recruiter'
-          className='inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4'
+          className='inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-5 group'
         >
-          <ArrowLeft className='mr-2 h-4 w-4' />
+          <ArrowLeft className='mr-2 h-4 w-4 group-hover:-translate-x-0.5 transition-transform' />
           Back to Jobs
         </Link>
         <div className='flex items-start justify-between'>
           <div>
-            <h1 className='text-3xl font-bold'>{job.title}</h1>
-            <div className='flex items-center gap-2 mt-1'>
+            <h1 className='text-3xl font-bold tracking-tight'>{job.title}</h1>
+            <div className='flex items-center gap-2 mt-1.5'>
               {job.company && (
-                <span className='text-muted-foreground'>{job.company}</span>
+                <span className='text-muted-foreground font-medium'>
+                  {job.company}
+                </span>
               )}
               {job.location && (
                 <>
-                  <span className='text-muted-foreground'>•</span>
+                  <span className='text-muted-foreground/40'>•</span>
                   <span className='text-muted-foreground'>{job.location}</span>
+                </>
+              )}
+              {candidates.length > 0 && (
+                <>
+                  <span className='text-muted-foreground/40'>•</span>
+                  <Badge variant='outline' className='text-xs'>
+                    {candidates.length} candidate
+                    {candidates.length !== 1 ? 's' : ''}
+                  </Badge>
                 </>
               )}
             </div>
           </div>
-          <div className='flex gap-2'>
+          <div className='flex gap-2 flex-wrap'>
             {candidates.length > 0 && (
               <Button
                 variant='default'
@@ -377,6 +399,38 @@ function JobDetailContent ({ params }: PageProps) {
                 Upload More
               </Button>
             )}
+            <Button
+              variant='outline'
+              onClick={() => exportCandidatesToCSV(candidates, job.title)}
+              disabled={candidates.length === 0}
+              size='sm'
+            >
+              <Download className='mr-2 h-4 w-4' />
+              CSV
+            </Button>
+            {job.formLink && (
+              <Button
+                variant='outline'
+                size='sm'
+                onClick={() => {
+                  navigator.clipboard.writeText(job.formLink!)
+                  toast.success('Application link copied!')
+                }}
+              >
+                <Copy className='mr-2 h-4 w-4' />
+                Copy Application Link
+              </Button>
+            )}
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={() => setActiveTab('application-form')}
+            >
+              <Link2 className='mr-2 h-4 w-4' />
+              {job.hasApplicationForm
+                ? 'Edit Application'
+                : 'Create Application'}
+            </Button>
             <Button
               variant='outline'
               onClick={async () => {
@@ -399,15 +453,6 @@ function JobDetailContent ({ params }: PageProps) {
             </Button>
             <Button
               variant='outline'
-              onClick={() => exportCandidatesToCSV(candidates, job.title)}
-              disabled={candidates.length === 0}
-              size='sm'
-            >
-              <Download className='mr-2 h-4 w-4' />
-              CSV
-            </Button>
-            <Button
-              variant='outline'
               onClick={handleAnalyze}
               disabled={analyzeResumes.isPending || candidates.length === 0}
             >
@@ -423,47 +468,60 @@ function JobDetailContent ({ params }: PageProps) {
       </div>
 
       {/* Stats */}
-      <div className='grid gap-4 md:grid-cols-4 mb-6'>
-        <Card>
-          <CardContent className='pt-6'>
-            <div className='flex items-center gap-2'>
-              <Users className='h-5 w-5 text-muted-foreground' />
+      <div className='grid gap-4 md:grid-cols-4 mb-8'>
+        <Card className='overflow-hidden'>
+          <CardContent className='pt-5 pb-4'>
+            <div className='flex items-center gap-3'>
+              <div className='p-2 rounded-lg bg-blue-500/10'>
+                <Users className='h-4.5 w-4.5 text-blue-500' />
+              </div>
               <div>
-                <p className='text-2xl font-bold'>{candidates.length}</p>
-                <p className='text-sm text-muted-foreground'>Total Resumes</p>
+                <p className='text-2xl font-bold tracking-tight'>
+                  {candidates.length}
+                </p>
+                <p className='text-xs text-muted-foreground'>Total Resumes</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className='pt-6'>
-            <div className='flex items-center gap-2'>
-              <CheckCircle className='h-5 w-5 text-green-500' />
+        <Card className='overflow-hidden'>
+          <CardContent className='pt-5 pb-4'>
+            <div className='flex items-center gap-3'>
+              <div className='p-2 rounded-lg bg-emerald-500/10'>
+                <CheckCircle className='h-4.5 w-4.5 text-emerald-500' />
+              </div>
               <div>
-                <p className='text-2xl font-bold'>{processedCount}</p>
-                <p className='text-sm text-muted-foreground'>Analyzed</p>
+                <p className='text-2xl font-bold tracking-tight'>
+                  {processedCount}
+                </p>
+                <p className='text-xs text-muted-foreground'>Analyzed</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className='pt-6'>
-            <div className='flex items-center gap-2'>
-              <Badge variant='success' className='h-5'>
-                {strongMatches.length}
-              </Badge>
+        <Card className='overflow-hidden'>
+          <CardContent className='pt-5 pb-4'>
+            <div className='flex items-center gap-3'>
+              <div className='p-2 rounded-lg bg-amber-500/10'>
+                <Star className='h-4.5 w-4.5 text-amber-500' />
+              </div>
               <div>
-                <p className='text-sm text-muted-foreground'>Strong Matches</p>
+                <p className='text-2xl font-bold tracking-tight'>
+                  {strongMatches.length}
+                </p>
+                <p className='text-xs text-muted-foreground'>Strong Matches</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className='pt-6'>
-            <div className='flex items-center gap-2'>
-              <Shield className='h-5 w-5 text-blue-500' />
+        <Card className='overflow-hidden'>
+          <CardContent className='pt-5 pb-4'>
+            <div className='flex items-center gap-3'>
+              <div className='p-2 rounded-lg bg-violet-500/10'>
+                <Shield className='h-4.5 w-4.5 text-violet-500' />
+              </div>
               <div>
-                <p className='text-2xl font-bold'>
+                <p className='text-2xl font-bold tracking-tight'>
                   {processedCount > 0
                     ? Math.round(
                         candidates
@@ -477,7 +535,7 @@ function JobDetailContent ({ params }: PageProps) {
                       )
                     : '—'}
                 </p>
-                <p className='text-sm text-muted-foreground'>Avg Trust Score</p>
+                <p className='text-xs text-muted-foreground'>Avg Trust Score</p>
               </div>
             </div>
           </CardContent>
@@ -512,12 +570,12 @@ function JobDetailContent ({ params }: PageProps) {
       >
         <TabsList>
           <TabsTrigger value='candidates'>Candidates</TabsTrigger>
-          <TabsTrigger value='analytics' disabled>
-            <Lock className='mr-1.5 h-4 w-4' />
-            Analytics (Locked)
+          <TabsTrigger value='analytics'>
+            <BarChart3 className='mr-1.5 h-4 w-4' />
+            Analytics
           </TabsTrigger>
           <TabsTrigger value='verix'>
-            <MessageSquare className='mr-1.5 h-4 w-4' />
+            <Bot className='mr-1.5 h-4 w-4' />
             Verix
           </TabsTrigger>
           <TabsTrigger value='application-form'>
@@ -854,6 +912,7 @@ function JobDetailContent ({ params }: PageProps) {
                           <ArrowUpDown className='h-3 w-3' />
                         </Button>
                       </TableHead>
+                      <TableHead>Verix</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -861,7 +920,7 @@ function JobDetailContent ({ params }: PageProps) {
                     {sortedCandidates.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={11}
+                          colSpan={12}
                           className='text-center py-8 text-muted-foreground'
                         >
                           No candidates match your search
@@ -974,19 +1033,63 @@ function JobDetailContent ({ params }: PageProps) {
                           </TableCell>
                           <TableCell className='text-xs text-muted-foreground'>
                             {candidate.uploadedAt
-                              ? new Date(candidate.uploadedAt).toLocaleDateString(
-                                  'en-US',
-                                  {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  }
-                                )
+                              ? new Date(
+                                  candidate.uploadedAt
+                                ).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })
                               : '—'}
                           </TableCell>
                           <TableCell>
                             {getStatusBadge(candidate.status)}
+                          </TableCell>
+                          <TableCell>
+                            {candidate.verixStatus ? (
+                              <Badge
+                                variant='outline'
+                                className={
+                                  candidate.verixStatus ===
+                                    'awaiting_response' ||
+                                  candidate.verixStatus === 'questions_sent'
+                                    ? 'bg-amber-500/10 text-amber-600 border-amber-500/20 text-xs'
+                                    : candidate.verixStatus === 'verified' ||
+                                      candidate.verixStatus === 'completed'
+                                    ? 'bg-green-500/10 text-green-600 border-green-500/20 text-xs'
+                                    : candidate.verixStatus === 'responded'
+                                    ? 'bg-blue-500/10 text-blue-600 border-blue-500/20 text-xs'
+                                    : candidate.verixStatus === 'failed' ||
+                                      candidate.verixStatus === 'expired'
+                                    ? 'bg-red-500/10 text-red-600 border-red-500/20 text-xs'
+                                    : 'bg-zinc-500/10 text-zinc-600 border-zinc-500/20 text-xs'
+                                }
+                              >
+                                <Bot className='h-3 w-3 mr-1' />
+                                {candidate.verixStatus === 'awaiting_response'
+                                  ? 'Awaiting Reply'
+                                  : candidate.verixStatus === 'questions_sent'
+                                  ? 'Sent'
+                                  : candidate.verixStatus === 'responded'
+                                  ? 'Re-reviewing'
+                                  : candidate.verixStatus === 'verified'
+                                  ? 'Verified'
+                                  : candidate.verixStatus === 'completed'
+                                  ? 'Completed'
+                                  : candidate.verixStatus === 'failed'
+                                  ? 'Failed'
+                                  : candidate.verixStatus === 'expired'
+                                  ? 'Expired'
+                                  : candidate.verixStatus === 'pending'
+                                  ? 'Queued'
+                                  : candidate.verixStatus.replace(/_/g, ' ')}
+                              </Badge>
+                            ) : (
+                              <span className='text-muted-foreground text-xs'>
+                                —
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <div className='flex items-center gap-1'>
@@ -1011,7 +1114,13 @@ function JobDetailContent ({ params }: PageProps) {
                                     onClick={async e => {
                                       e.stopPropagation()
                                       try {
-                                        const { downloadUrl } = await import('@/lib/screening-api').then(m => m.recruiterAPI.getResumeDownloadUrl(candidate.resumeId))
+                                        const { downloadUrl } = await import(
+                                          '@/lib/screening-api'
+                                        ).then(m =>
+                                          m.recruiterAPI.getResumeDownloadUrl(
+                                            candidate.resumeId
+                                          )
+                                        )
                                         window.open(downloadUrl, '_blank')
                                       } catch {
                                         toast.error('Failed to load resume')
@@ -1166,15 +1275,7 @@ function JobDetailContent ({ params }: PageProps) {
         </TabsContent>
 
         <TabsContent value='analytics'>
-          <Card>
-            <CardContent className='flex flex-col items-center justify-center py-12'>
-              <Lock className='h-12 w-12 text-muted-foreground mb-4' />
-              <h3 className='text-lg font-semibold mb-2'>Analytics Locked</h3>
-              <p className='text-muted-foreground text-center'>
-                Analytics features are coming soon.
-              </p>
-            </CardContent>
-          </Card>
+          <JobAnalytics candidates={candidates} jobTitle={job.title} />
         </TabsContent>
 
         <TabsContent value='upload'>
@@ -1491,14 +1592,75 @@ function JobDetailContent ({ params }: PageProps) {
         <TabsContent value='jd'>
           <Card>
             <CardHeader>
-              <CardTitle>Job Description</CardTitle>
+              <div className='flex items-center justify-between'>
+                <CardTitle>Job Description</CardTitle>
+                {!isEditingJD ? (
+                  <Button
+                    variant='outline'
+                    size='sm'
+                    onClick={() => {
+                      setEditedDescription(job.description)
+                      setIsEditingJD(true)
+                    }}
+                  >
+                    <Edit className='h-4 w-4 mr-2' />
+                    Edit
+                  </Button>
+                ) : (
+                  <div className='flex gap-2'>
+                    <Button
+                      variant='ghost'
+                      size='sm'
+                      onClick={() => setIsEditingJD(false)}
+                      disabled={isSavingJD}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size='sm'
+                      disabled={isSavingJD}
+                      onClick={async () => {
+                        setIsSavingJD(true)
+                        try {
+                          await recruiterAPI.updateJob(jobId, {
+                            description: editedDescription
+                          })
+                          toast.success('Job description updated')
+                          setIsEditingJD(false)
+                          window.location.reload()
+                        } catch {
+                          toast.error('Failed to update job description')
+                        } finally {
+                          setIsSavingJD(false)
+                        }
+                      }}
+                    >
+                      {isSavingJD ? (
+                        <Loader2 className='h-4 w-4 mr-2 animate-spin' />
+                      ) : (
+                        <Save className='h-4 w-4 mr-2' />
+                      )}
+                      Save
+                    </Button>
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
-              <div className='prose prose-sm max-w-none dark:prose-invert'>
-                <pre className='whitespace-pre-wrap font-sans text-sm'>
-                  {job.description}
-                </pre>
-              </div>
+              {isEditingJD ? (
+                <Textarea
+                  value={editedDescription}
+                  onChange={e => setEditedDescription(e.target.value)}
+                  className='min-h-[400px] font-sans text-sm'
+                  placeholder='Enter job description...'
+                />
+              ) : (
+                <div className='prose prose-sm max-w-none dark:prose-invert'>
+                  <pre className='whitespace-pre-wrap font-sans text-sm'>
+                    {job.description}
+                  </pre>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

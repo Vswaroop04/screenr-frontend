@@ -10,6 +10,7 @@ import {
   Briefcase,
   Settings,
   Shield,
+  CreditCard,
 } from "lucide-react";
 
 const navigation = [
@@ -27,6 +28,11 @@ const navigation = [
     name: "Jobs",
     href: "/admin/jobs",
     icon: Briefcase,
+  },
+  {
+    name: "Credits",
+    href: "/admin/credits",
+    icon: CreditCard,
   },
   {
     name: "Settings",

@@ -11,6 +11,10 @@ import { toast } from "sonner";
 import { Loader2, Mail, User } from "lucide-react";
 import Link from "next/link";
 import { OtpInput } from "@/components/ui/otp-input";
+import { ErrorText } from "@/components/ui/error-text";
+import { ProgressSteps } from "@/components/ui/progress-steps";
+import { TypingIndicator } from "@/components/ui/typing-indicator";
+import { validateEmail } from "@/lib/validation";
 
 export function RecruiterLogin() {
   const router = useRouter();
@@ -20,11 +24,20 @@ export function RecruiterLogin() {
 
   const [step, setStep] = useState<"email" | "otp">("email");
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate email before sending OTP
+    const error = validateEmail(email);
+    if (error) {
+      setEmailError(error);
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -74,17 +87,24 @@ export function RecruiterLogin() {
 
   return (
     <div className="w-full max-w-md space-y-6">
-      <div className="space-y-2 text-center">
+      <div className="space-y-4 text-center">
         <h1 className="text-3xl font-bold">Organization Login</h1>
         <p className="text-muted-foreground">
           {step === "email"
             ? "Enter your email to receive a verification code"
             : "Enter the 6-digit code sent to your email"}
         </p>
+        <ProgressSteps
+          steps={[
+            { label: "Email", status: step === "email" ? "current" : "completed" },
+            { label: "Verification", status: step === "otp" ? "current" : "upcoming" },
+          ]}
+          className="pt-4"
+        />
       </div>
 
       {step === "email" ? (
-        <form onSubmit={handleSendOtp} className="space-y-4">
+        <form onSubmit={handleSendOtp} className="space-y-4 animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <div className="relative">
@@ -94,19 +114,25 @@ export function RecruiterLogin() {
                 type="email"
                 placeholder="you@company.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (emailError) setEmailError("");
+                }}
+                onBlur={(e) => {
+                  const error = validateEmail(e.target.value);
+                  setEmailError(error || "");
+                }}
                 required
                 className="pl-10"
+                aria-invalid={!!emailError}
               />
             </div>
+            {emailError && <ErrorText>{emailError}</ErrorText>}
           </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading || !email || !!emailError}>
             {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Sending...
-              </>
+              <TypingIndicator text="Sending code" />
             ) : (
               "Continue with Email"
             )}
@@ -125,7 +151,7 @@ export function RecruiterLogin() {
           </div>
         </form>
       ) : (
-        <form onSubmit={handleVerifyOtp} className="space-y-4">
+        <form onSubmit={handleVerifyOtp} className="space-y-4 animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
           <div className="space-y-3">
             <Label>Verification Code</Label>
             <OtpInput
