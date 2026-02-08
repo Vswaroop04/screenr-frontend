@@ -14,6 +14,8 @@ export default async function RootLayout ({
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
+        <link rel='icon' href='/favicon.ico' sizes='any' />
+        <link rel='icon' href='/favicon.svg' type='image/svg+xml' />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -25,7 +27,7 @@ export default async function RootLayout ({
                   }
                 } catch(e) {}
               })();
-            `,
+            `
           }}
         />
       </head>

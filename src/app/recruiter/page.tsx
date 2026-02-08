@@ -155,10 +155,12 @@ function RecruiterDashboardContent () {
         }
       }
 
-      // Add application form data if enabled
-      if (formData.createApplicationForm) {
+      // Always create application form with screening questions
+      const hasQuestions =
+        formData.formQuestions && formData.formQuestions.length > 0
+      if (hasQuestions) {
         jobData.createApplicationForm = true
-        jobData.formQuestions = formData.formQuestions || []
+        jobData.formQuestions = formData.formQuestions
         jobData.formSettings = {
           requireEmail: formData.formRequireEmail,
           requirePhone: formData.formRequirePhone,
