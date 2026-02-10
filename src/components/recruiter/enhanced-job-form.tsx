@@ -899,19 +899,41 @@ export function EnhancedJobForm ({
 
       {/* Application Form */}
       <div className='space-y-4 p-4 border rounded-lg bg-muted/30'>
-        <div>
-          <Label className='flex items-center gap-2 text-base font-semibold'>
-            <Link2 className='h-5 w-5' />
-            Application Form
-          </Label>
-          <p className='text-sm text-muted-foreground mt-1'>
-            A shareable link will be generated so candidates can apply with
-            their resume and answer screening questions
-          </p>
+        <div className='flex items-start justify-between'>
+          <div className='flex-1'>
+            <Label className='flex items-center gap-2 text-base font-semibold'>
+              <Link2 className='h-5 w-5' />
+              Application Form
+            </Label>
+            <p className='text-sm text-muted-foreground mt-1'>
+              Create a shareable link so candidates can apply with their resume
+              and answer screening questions
+            </p>
+          </div>
+          <div className='flex items-center gap-2'>
+            <Checkbox
+              id='createApplicationForm'
+              checked={formData.createApplicationForm}
+              onCheckedChange={checked =>
+                setFormData({
+                  ...formData,
+                  createApplicationForm: !!checked
+                })
+              }
+            />
+            <Label
+              htmlFor='createApplicationForm'
+              className='text-sm font-medium cursor-pointer'
+            >
+              Enable
+            </Label>
+          </div>
         </div>
 
-        {/* Screening Questions */}
-        <div className='space-y-3'>
+        {formData.createApplicationForm && (
+          <>
+            {/* Screening Questions */}
+            <div className='space-y-3'>
           <div className='flex items-center justify-between'>
             <Label className='text-sm font-medium'>Screening Questions</Label>
             <Button
@@ -1172,6 +1194,8 @@ export function EnhancedJobForm ({
             />
           </div>
         </div>
+          </>
+        )}
       </div>
 
       {/* Actions */}

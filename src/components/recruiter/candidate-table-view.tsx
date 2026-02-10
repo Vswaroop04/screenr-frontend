@@ -39,14 +39,14 @@ import {
   Users,
   Download,
   Mail,
-  Eye,
   FileText,
   ExternalLink
 } from 'lucide-react'
 import { Checkbox } from '@/components/ui/checkbox'
-import { dashboardAPI, recruiterAPI } from '@/lib/screening-api'
+import { dashboardAPI, recruiterAPI, type Candidate as APICand } from '@/lib/screening-api'
 import { exportToCSV } from '@/lib/csv-export'
 import { toast } from 'sonner'
+import { CandidateDetailDialog } from '@/components/screening/candidate-detail-dialog'
 
 interface Candidate {
   id: string
@@ -82,6 +82,10 @@ export function CandidateTableView () {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
   const [statusFilter, setStatusFilter] = useState<string[]>([])
   const [showGroupDialog, setShowGroupDialog] = useState(false)
+  const [selectedCandidate, setSelectedCandidate] = useState<APICand | null>(
+    null
+  )
+  const [showDetailDialog, setShowDetailDialog] = useState(false)
 
   useEffect(() => {
     if (candidatesData?.candidates) {
@@ -175,6 +179,18 @@ export function CandidateTableView () {
       window.location.href = `mailto:${email}`
     } else {
       toast.error('No email available for this candidate')
+    }
+  }
+
+  const handleViewDetails = (candidate: Candidate) => {
+    // Convert to API candidate format
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const apiCandidate = candidatesData?.candidates.find((c: any) =>
+      c.resumeId === candidate.resumeId
+    )
+    if (apiCandidate) {
+      setSelectedCandidate(apiCandidate as APICand)
+      setShowDetailDialog(true)
     }
   }
 
@@ -492,43 +508,56 @@ export function CandidateTableView () {
                       )}
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant='ghost' size='sm'>
-                            <MoreHorizontal className='h-4 w-4' />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align='end'>
-                          <DropdownMenuItem
-                            onClick={() => candidate.resumeId && handleViewResume(candidate.resumeId)}
-                          >
-                            <FileText className='h-4 w-4 mr-2' />
-                            View Resume
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleContact(candidate.email)}
-                          >
-                            <Mail className='h-4 w-4 mr-2' />
-                            Contact
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleToggleShortlist(candidate.id)}
-                          >
-                            {candidate.isShortlisted ? (
-                              <>
-                                <StarOff className='h-4 w-4 mr-2' />
-                                Remove from Shortlist
-                              </>
-                            ) : (
-                              <>
-                                <Star className='h-4 w-4 mr-2' />
-                                Add to Shortlist
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className='flex items-center gap-2'>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => handleViewDetails(candidate)}
+                        >
+                          <FileText className='h-4 w-4 mr-2' />
+                          View
+                        </Button>
+                        <Button
+                          variant='outline'
+                          size='sm'
+                          onClick={() => candidate.resumeId && handleViewResume(candidate.resumeId)}
+                          disabled={!candidate.resumeId}
+                        >
+                          <ExternalLink className='h-4 w-4 mr-2' />
+                          Resume
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant='ghost' size='sm'>
+                              <MoreHorizontal className='h-4 w-4' />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align='end'>
+                            <DropdownMenuItem
+                              onClick={() => handleContact(candidate.email)}
+                            >
+                              <Mail className='h-4 w-4 mr-2' />
+                              Contact
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleToggleShortlist(candidate.id)}
+                            >
+                              {candidate.isShortlisted ? (
+                                <>
+                                  <StarOff className='h-4 w-4 mr-2' />
+                                  Remove from Shortlist
+                                </>
+                              ) : (
+                                <>
+                                  <Star className='h-4 w-4 mr-2' />
+                                  Add to Shortlist
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -537,6 +566,13 @@ export function CandidateTableView () {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Candidate Detail Dialog */}
+      <CandidateDetailDialog
+        candidate={selectedCandidate}
+        open={showDetailDialog}
+        onOpenChange={setShowDetailDialog}
+      />
 
       {/* Simple Group Creation Dialog */}
       {showGroupDialog && (

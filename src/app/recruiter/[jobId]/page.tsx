@@ -23,7 +23,6 @@ import {
   CheckSquare,
   Square,
   X,
-  Eye,
   Mail,
   Bot,
   FileText,
@@ -176,6 +175,15 @@ function JobDetailContent ({ params }: PageProps) {
       toast.success('Resume queued for reprocessing')
     } catch {
       toast.error('Failed to reprocess resume')
+    }
+  }
+
+  const handleViewResume = async (resumeId: string) => {
+    try {
+      const { downloadUrl } = await recruiterAPI.getResumeDownloadUrl(resumeId)
+      window.open(downloadUrl, '_blank')
+    } catch (error) {
+      toast.error('Failed to load resume')
     }
   }
 
@@ -1109,26 +1117,29 @@ function JobDetailContent ({ params }: PageProps) {
                               ) : (
                                 <>
                                   <Button
-                                    variant='ghost'
+                                    variant='outline'
                                     size='sm'
-                                    onClick={async e => {
+                                    onClick={e => {
                                       e.stopPropagation()
-                                      try {
-                                        const { downloadUrl } = await import(
-                                          '@/lib/screening-api'
-                                        ).then(m =>
-                                          m.recruiterAPI.getResumeDownloadUrl(
-                                            candidate.resumeId
-                                          )
-                                        )
-                                        window.open(downloadUrl, '_blank')
-                                      } catch {
-                                        toast.error('Failed to load resume')
-                                      }
+                                      setSelectedCandidate(candidate)
+                                      setDetailDialogOpen(true)
                                     }}
-                                    title='View Resume'
+                                    title='View Details'
                                   >
-                                    <Eye className='h-4 w-4' />
+                                    <FileText className='h-4 w-4 mr-1' />
+                                    View
+                                  </Button>
+                                  <Button
+                                    variant='outline'
+                                    size='sm'
+                                    onClick={e => {
+                                      e.stopPropagation()
+                                      handleViewResume(candidate.resumeId)
+                                    }}
+                                    title='View Resume PDF'
+                                  >
+                                    <ExternalLink className='h-4 w-4 mr-1' />
+                                    Resume
                                   </Button>
                                   {candidate.candidateEmail && (
                                     <Button
