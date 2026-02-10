@@ -30,7 +30,8 @@ import {
   Save,
   Loader2,
   Link2,
-  Copy
+  Copy,
+  ExternalLink
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -182,7 +183,7 @@ function JobDetailContent ({ params }: PageProps) {
     try {
       const { downloadUrl } = await recruiterAPI.getResumeDownloadUrl(resumeId)
       window.open(downloadUrl, '_blank')
-    } catch (error) {
+    } catch {
       toast.error('Failed to load resume')
     }
   }
@@ -1466,7 +1467,7 @@ function JobDetailContent ({ params }: PageProps) {
                 />
                 <select
                   value={newQuestionWeight}
-                  onChange={e => setNewQuestionWeight(e.target.value as any)}
+                  onChange={e => setNewQuestionWeight(e.target.value as 'critical' | 'important' | 'nice_to_have')}
                   className='border rounded px-2 text-sm'
                 >
                   <option value='critical'>Critical</option>
